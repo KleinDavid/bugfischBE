@@ -7,6 +7,7 @@ from threading import Timer, Thread, Event
 class SessionService:
     _sessions = []
     _dataService = DataService.getInstance()
+    _logginService = LoggingService()
     _checkSessionsTime = 60/6
     _removeSessionTime = 600
     __instance = None
@@ -23,9 +24,9 @@ class SessionService:
         else:
             SessionService.__instance = self
         
-        stop_flag = Event()
-        timer = Timer(stop_flag, self._checkSessionsTime, self.sessiontimer)
-        timer.start()
+        # stop_flag = Event()
+        # timer = Timer(stop_flag, self._checkSessionsTime, self.sessiontimer)
+        # timer.start()
 
     def login(self, password):
         if self._dataService.check_passwords(password):
@@ -52,7 +53,6 @@ class SessionService:
 
     def sessiontimer(self):
         for session in self._sessions:
-
             if session.screeContext.lastResultInSections >= self._removeSessionTime:
                 LoggingService.log('remove Session: ' + session.token + ' after ' + str(session.totalTime/60) + ' Minutes')
                 self._sessions.remove(session)
@@ -60,10 +60,20 @@ class SessionService:
             session.screeContext.lastResultInSections = session.screeContext.lastResultInSections + self._checkSessionsTime
             session.totalTime = session.totalTime + self._checkSessionsTime
 
+    def logout(self, token):
+        self._logginService.log('logout Session: ' + token)
+        self._sessions = list(filter(lambda x: x.token != token, self._sessions))
+
     def getSessionByToken(self, token):
         for session in self._sessions:
             if session.token == token:
                 return session
+        return None
+
+    def getComponentById(self, token, component_id):
+        for session in self._sessions:
+            if session.token == token:
+                return session.getComponentById(component_id)
         return None
 
 

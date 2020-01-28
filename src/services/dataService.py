@@ -164,7 +164,16 @@ class DataService:
         res = cursor.fetchall()
         if not res:
             return None
-        print(res)
+
+        # **get Reference
+        for ref in self.getReferences(data_type):
+            for value in res:
+                child_id = str(value[ref['parentField']])
+                if child_id != '':
+                    child = self.getDataObjectById(ref['childTable'], child_id)
+                    value[ref['parentField']] = child
+        # get Reference**
+
         res_object = {}
         counter = 0
         for value in res:
@@ -174,6 +183,21 @@ class DataService:
 
     def getScreenByStartScreen(self, start_screen):
         query = 'SELECT * FROM `' + 'screenconfig' + '` WHERE StartScreen = \'' + start_screen + '\''
+        cursor = self._dataBase.cursor(dictionary=True)
+        cursor.execute(query)
+        res = cursor.fetchall()
+        return res[0]
+
+    def getReferences(self, data_package_name):
+        query = 'SELECT * FROM `' + 'references' + '` WHERE parentTable = \'' + data_package_name.lower() + '\''
+        cursor = self._dataBase.cursor(dictionary=True)
+        cursor.execute(query)
+        res = cursor.fetchall()
+        return res
+
+    def getDataObjectById(self, table_name, data_id):
+        query = 'SELECT * FROM `' + table_name.lower() + '` WHERE ID = \'' + data_id + '\''
+        print(query)
         cursor = self._dataBase.cursor(dictionary=True)
         cursor.execute(query)
         res = cursor.fetchall()

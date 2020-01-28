@@ -4,8 +4,9 @@ class ServerAction:
     Input = {}
     Token = ''
     Id = ''
-    ComponentContext = ''
+    Context = ''
     Execute = ''
+    ComponentId = ''
 
     def __init__(self):
         self.Name = ''
@@ -14,3 +15,4 @@ class ServerAction:
         self.Token = ''
         self.Id = ''
         self.Execute = ''
+        self.ComponentId = ''

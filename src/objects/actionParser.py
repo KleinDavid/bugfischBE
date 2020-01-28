@@ -23,6 +23,8 @@ class ActionParser:
         action.Name = self.getActionNameByString(action_string)
         action.Type = self.getActionTypeByString(action_string)
         action.Input = self.getActionInputByString(action_string)
+        action.Execute = self.dataService.getServerActionDescription(action.Type)['Execute']
+        action.Context = self.getActionContextByString(action_string, action.Execute)
         return action
 
     @staticmethod
@@ -30,8 +32,12 @@ class ActionParser:
         return action_string.split('(')[0]
 
     def getActionNameByString(self, action_string):
-        if len(action_string.split(')')[1]) > 0:
-            return action_string.split(')')[1].split('=')[1].replace('\'', '')
+        if '{' in action_string:
+            values = action_string.split('{')[1].replace('}', '')
+            for value in values.split(';'):
+                print(' --------------- ',  value.split('=')[0], action_string)
+                if value.split('=')[0] == 'Name':
+                    return value.split('=')[1]
         return self.getActionTypeByString(action_string)
 
     def getActionInputByString(self, action_string):
@@ -75,6 +81,17 @@ class ActionParser:
         for input_object in input_objects:
             return_inputs_object[input_object['name']] = input_object['input']
         return return_inputs_object
+
+    @staticmethod
+    def getActionContextByString(action_string, execute):
+        if execute == 'Client':
+            return ''
+        if '{' in action_string:
+            action_string = action_string.split('{')[1].replace('}', '')
+            for value in action_string.split(';'):
+                if value.split('=')[0] == 'Context':
+                    return value.split('=')[1]
+        return 'Component'
 
     def getInputValueByString(self, input_value_string):
         if '\'' in input_value_string:
