@@ -97,6 +97,7 @@ class ActionHandler:
         table_name = data['DataType']
         data = data['Data']
         self.dataService.saveDataPackageInDataBase(table_name, data)
+        return {'Name': 'SaveSucces', 'Data': 'True'}
 
     def routeAfterLoginAction(self, data):
         role = data['Role']
