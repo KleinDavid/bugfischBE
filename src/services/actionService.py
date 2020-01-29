@@ -27,6 +27,7 @@ class ActionService:
 
     def executeAction(self, action):
         session = self.sessionService.getSessionByToken(action.Token)
+        component = self.sessionService.getComponentById(action.Token, action.ComponentId)
         if session is None:
             action = ServerAction()
             action.Type = 'InitializeSessionAction'
@@ -38,7 +39,7 @@ class ActionService:
             result.Error = 'Action Not Available'
             return result
 
-        action_handler = ActionHandler(action, session)
+        action_handler = ActionHandler(action, session, component)
         action_handler.executeAction(True)
         return action_handler.serverResult
 

@@ -5,10 +5,8 @@ from services.dataService import DataService
 
 
 class ScreenContext:
-    ServerActions = []
-    ClientActions = []
+    actions = []
     ActualServerActoinsInClient = []
-    Data = []
     Component = []
     lastResultInSections = 0
 
@@ -21,10 +19,10 @@ class ScreenContext:
         delete_action_ids = []
         if component_name == self.Component:
             return
-        for action in self.ServerActions:
+        for action in self.actions:
             if action.ComponentContext != component_name and action.ComponentContext != 'no':
                 delete_action_ids.append(action.Id)
-                self.ServerActions.remove(action)
+                self.actions.remove(action)
         self.Component = component_name
         return delete_action_ids
 
@@ -34,19 +32,11 @@ class ScreenContext:
             self.ClientActions.append(action)
         else:
             action.Id = self.getActionId()
-            self.ServerActions.append(action)
-
-    def getActionsForResult(self):
-        return_actions = self.ServerActions + self.ClientActions
-        self.ClientActions = []
-        for action in self.ServerActions:
-            self.ActualServerActoinsInClient.append(action.Id)
-        self.lastResultInSections = 0
-        return return_actions
+            self.actions.append(action)
 
     def getActionId(self):
         highest_id = 0
-        for action in self.ServerActions:
+        for action in self.actions:
             current_id = int(action.Id.split('-')[1])
             if current_id > highest_id:
                 highest_id = current_id

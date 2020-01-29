@@ -4,6 +4,7 @@ from models.ServerResult import ServerResult
 from objects.actionParser import ActionParser
 from services.dataService import DataService
 from services.loggingService import LoggingService
+from services.sessionService import SessionService
 
 
 class ActionHandler:
@@ -14,12 +15,15 @@ class ActionHandler:
     loggingService = LoggingService()
     actionParser = {}
     dataService = DataService.getInstance()
+    sessionService = SessionService.getInstance()
+    component = {}
 
-    def __init__(self, action, session):
+    def __init__(self, action, session, component):
+        self.actionResultData = {}
+        self.component = component
         self.serverResult = ServerResult()
         self.action = action
         self.session = session
-
         self.actionParser = ActionParser(self.actionResultData)
 
     def executeAction(self, from_client):
@@ -42,12 +46,14 @@ class ActionHandler:
             self.executeAction(False)
 
         if from_client:
-            self.serverResult.Actions = self.session.screeContext.getActionsForResult()
+            self.serverResult.Actions = self.session.getActionsForResult()
             self.loggingService.logServerResult(self.serverResult)
 
     def setActionToScreenContext(self, action):
         action.Execute = self.dataService.getServerActionDescription(action.Type)['Execute']
-        self.session.screeContext.addAction(action)
+        if self.component is not None and action.Context == 'Component':
+            action.ComponentId = self.component.Id
+        self.session.setNewAction(action)
 
     def runAction(self, action):
         switcher = {
@@ -56,15 +62,22 @@ class ActionHandler:
             "RouteAfterLogin": self.routeAfterLoginAction,
             "SaveDataAction": self.saveDataAction,
             "GetDataAction": self.getDataAction,
-            "InitializeSessionAction": self.initializeSessionAction
+            "InitializeSessionAction": self.initializeSessionAction,
+            "LogoutAction": self.logoutAction
         }
         func = switcher.get(action.Type, lambda: "Invalid month")
         return func(action.Input)
 
     # Main Action
     def initializeSessionAction(self, data):
-        self.session.screeContext.ServerActions = []
-        return {'Token': self.session.token, 'ComponentName': self.session.screeContext.Component}
+        token = data['Token']
+        if token == '':
+            self.session = self.sessionService.getSessionByToken(self.sessionService.generate_session_and_token())
+            screen = self.dataService.getScreenByStartScreen('Init')
+            return {'Token': self.session.token, 'ComponentName': screen['ComponentName']}
+        else:
+            self.session = self.sessionService.getSessionByToken(token)
+            return {'Token': self.session.token, 'ComponentName': self.session.getCurrentComponent().name}
 
     def loginAction(self, data):
         password = data['Password']
@@ -73,7 +86,7 @@ class ActionHandler:
 
         if login_data is None:
             result.Error = 'Not Login'
-            return {'Role': '', 'Token': ''}
+            return {'Role': 'Init', 'Token': ''}
         return login_data
 
     def getDataAction(self, data):
@@ -84,28 +97,34 @@ class ActionHandler:
         table_name = data['DataType']
         data = data['Data']
         self.dataService.saveDataPackageInDataBase(table_name, data)
+        return {'Name': 'SaveSucces', 'Data': 'True'}
 
-    @staticmethod
-    def routeAfterLoginAction(data):
+    def routeAfterLoginAction(self, data):
         role = data['Role']
+        screen = self.dataService.getScreenByStartScreen(role)
         if role == 'Admin':
-            return {'ComponentName': 'ShowQuestionsComponent'}
+            return {'ComponentName': screen['ComponentName']}
         if role == 'User':
-            return {'ComponentName': 'AskQuestionComponent'}
+            return {'ComponentName': screen['ComponentName']}
 
-        return {'ComponentName': 'LoginComponent'}
+        return {'ComponentName': screen['ComponentName']}
 
     def changeRouteAction(self, data):
         component_name = data['ComponentName']
         routedata = self.dataService.getRouteData(component_name)
+        self.component = self.session.createNewComponent(component_name)
         if routedata is None:
             self.serverResult.Error = 'Component not Found'
             return{'ComponentName': ''}
-        delete_action_ids = self.session.screeContext.componentChange(component_name)
         for action in self.actionParser.getActionsByArray(routedata["OutputServerActions"].split(",")):
             self.setActionToScreenContext(action)
         for action_object in self.actionParser.getActionsByArray(routedata['UseAction'].split(',')):
             self.action = action_object
             self.executeAction(False)
 
-        return {'ComponentName': component_name, 'DeleteActionIds': delete_action_ids}
+        return {'ComponentName': component_name, 'DeleteActionIds': []}
+
+    def logoutAction(self, data):
+        token = data['Token']
+        self.sessionService.logout(token)
+
