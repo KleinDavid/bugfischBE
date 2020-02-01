@@ -24,9 +24,9 @@ class SessionService:
         else:
             SessionService.__instance = self
         
-        stop_flag = Event()
-        timer = Timer(stop_flag, self._checkSessionsTime, self.sessiontimer)
-        timer.start()
+        # stop_flag = Event()
+        # timer = Timer(stop_flag, self._checkSessionsTime, self.sessiontimer)
+        # timer.start()
 
     def login(self, password):
         if self._dataService.check_passwords(password):
@@ -53,11 +53,11 @@ class SessionService:
 
     def sessiontimer(self):
         for session in self._sessions:
-            if session.screeContext.lastResultInSections >= self._removeSessionTime:
+            if session.lastRequestInSeconds >= self._removeSessionTime:
                 LoggingService.log('remove Session: ' + session.token + ' after ' + str(session.totalTime/60) + ' Minutes')
                 self._sessions.remove(session)
 
-            session.screeContext.lastResultInSections = session.screeContext.lastResultInSections + self._checkSessionsTime
+            session.lastRequestInSeconds = session.lastRequestInSeconds + self._checkSessionsTime
             session.totalTime = session.totalTime + self._checkSessionsTime
 
     def logout(self, token):

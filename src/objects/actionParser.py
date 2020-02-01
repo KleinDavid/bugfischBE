@@ -29,13 +29,12 @@ class ActionParser:
 
     @staticmethod
     def getActionTypeByString(action_string):
-        return action_string.split('(')[0]
+        return action_string.split('(')[0].replace(' ', '')
 
     def getActionNameByString(self, action_string):
         if '{' in action_string:
             values = action_string.split('{')[1].replace('}', '')
             for value in values.split(';'):
-                print(' --------------- ',  value.split('=')[0], action_string)
                 if value.split('=')[0] == 'Name':
                     return value.split('=')[1]
         return self.getActionTypeByString(action_string)

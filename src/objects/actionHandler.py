@@ -18,13 +18,13 @@ class ActionHandler:
     sessionService = SessionService.getInstance()
     component = {}
 
-    def __init__(self, action, session, component):
+    def __init__(self, action, session):
         self.actionResultData = {}
-        self.component = component
         self.serverResult = ServerResult()
         self.action = action
         self.session = session
         self.actionParser = ActionParser(self.actionResultData)
+        self.component = self.session.getCurrentComponent()
 
     def executeAction(self, from_client):
 
@@ -63,7 +63,8 @@ class ActionHandler:
             "SaveDataAction": self.saveDataAction,
             "GetDataAction": self.getDataAction,
             "InitializeSessionAction": self.initializeSessionAction,
-            "LogoutAction": self.logoutAction
+            "LogoutAction": self.logoutAction,
+            "FilterDataAction": self.filterDataActoin
         }
         func = switcher.get(action.Type, lambda: "Invalid month")
         return func(action.Input)
@@ -91,6 +92,7 @@ class ActionHandler:
 
     def getDataAction(self, data):
         data_object = self.dataService.getDataPackage(data['DataType'], data['WhereStatement'])
+        self.component.data[data['DataType']] = data_object
         return {'Name': data['DataType'], 'Data': data_object}
 
     def saveDataAction(self, data):
@@ -128,3 +130,19 @@ class ActionHandler:
         token = data['Token']
         self.sessionService.logout(token)
 
+    def filterDataActoin(self, data):
+        data_package = self.component.getDataByName(data['DataType'])
+        return_data_package = {}
+        property_path = data['Property'].split('.')
+        condition = data['Condition']
+        counter = 0
+        for value_id in data_package:
+            data_value = data_package[value_id]
+            for _property in property_path:
+                if len(data_value) > 0:
+                    print(_property, data_value)
+                    data_value = data_value[_property]
+                    if str(data_value) == str(condition):
+                        return_data_package[counter] = data_package[value_id]
+                        counter = counter + 1
+        return {'Name': data['DataType'], 'Data': return_data_package}

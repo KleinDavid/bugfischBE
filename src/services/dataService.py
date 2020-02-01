@@ -98,7 +98,8 @@ class DataService:
 
     def getServerActionDescriptions(self):
         cursor = self._dataBase.cursor(dictionary=True)
-        cursor.execute('SELECT * FROM `serveractions` WHERE 1')
+        print('SELECT * FROM `serveractions` WHERE Opening = \'1\'')
+        cursor.execute('SELECT * FROM `serveractions` WHERE Opening = \'1\'');
         res = cursor.fetchall()
         if not res:
             return None

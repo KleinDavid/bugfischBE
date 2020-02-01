@@ -30,8 +30,7 @@ class Session:
 
         action_decriptions = self.dataService.getServerActionDescriptions()
         for action_decription in action_decriptions:
-            if action_decription['Opening'] == 1:
-                print(' ............................. ')
+            if action_decription['Opening'] == '1':
                 action = ServerAction()
                 action.Type = action_decription['Type']
                 action.Name = action_decription['Type']
@@ -72,7 +71,6 @@ class Session:
     def setNewAction(self, action):
         if action.Context == 'Component':
             component = self.getComponentById(action.ComponentId)
-            print('add Actoin to', component.name, action.Type)
             component.addAction(action)
             return
         action.Id = self.getNewActionId()
@@ -86,6 +84,7 @@ class Session:
         self.printSessionActoins()
         result_actions = self.actions + component_actions
         self.actions = list(filter(lambda x: x.Execute != 'Client', self.actions))
+        self.lastRequestInSeconds = 0
         return result_actions
 
     def getComponentById(self, component_id):
@@ -115,7 +114,10 @@ class Session:
         return (''.join(random.choice(letters) for i in range(6))) + '-' + str(highest_id + 1)
 
     def getCurrentComponent(self):
-        return list(filter(lambda x: x.active, self.components))[0]
+        current_components_list = list(filter(lambda x: x.active is True, self.components))
+        if len(current_components_list) > 0:
+            return current_components_list[0]
+        return None
 
     def printSessionActoins(self):
         print('Session:')
