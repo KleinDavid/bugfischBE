@@ -24,9 +24,9 @@ class SessionService:
         else:
             SessionService.__instance = self
         
-        # stop_flag = Event()
-        # timer = Timer(stop_flag, self._checkSessionsTime, self.sessiontimer)
-        # timer.start()
+        #stop_flag = Event()
+        #timer = Timer(stop_flag, self._checkSessionsTime, self.sessiontimer)
+        #timer.start()
 
     def login(self, password):
         if self._dataService.check_passwords(password):

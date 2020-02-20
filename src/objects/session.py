@@ -46,15 +46,18 @@ class Session:
             return {'Token': self.token, 'Role': self.dataService.getRoleByPassword(password)}
         return None
 
-    def checkIfActionIsAvailable(self, action):
+    def getActionByOutputAction(self, output_action):
         # self.printSessionActoins()
         for current_action in self.actions:
-            if current_action.Type == action.Type and current_action.Id == action.Id:
-                return True
-        for current_action in self.getComponentById(action.Id.split('_')[0]).actions:
-            if current_action.Id == action.Id and current_action.Type == action.Type:
-                return True
-        return False
+            if current_action.Type == output_action.Type and current_action.Id == output_action.Id:
+                current_action.InClient = False
+                return current_action
+        if '_' in output_action.Id:
+            for current_action in self.getComponentById(output_action.Id.split('_')[0]).actions:
+                if current_action.Id == output_action.Id and current_action.Type == output_action.Type:
+                    current_action.InClient = False
+                    return current_action
+        return None
 
     def createNewComponent(self, name):
         for component in self.components:
@@ -81,11 +84,30 @@ class Session:
         for component in self.components:
             if component.active is True:
                 component_actions = component_actions + component.actions
-        self.printSessionActoins()
+        # self.printSessionActoins()
         result_actions = self.actions + component_actions
+        result_actions = list(filter(lambda x: not x.InClient, result_actions))
         self.actions = list(filter(lambda x: x.Execute != 'Client', self.actions))
+        for action in self.actions:
+            action.InClient = True
         self.lastRequestInSeconds = 0
         return result_actions
+
+    def getCurrentActionIds(self):
+        action_ids = []
+        for component in list(filter(lambda x: x.active, self.components)):
+            for action in component.actions:
+                action_ids.append(action.Id)
+        for action in self.actions:
+            action_ids.append(action.Id)
+        return action_ids
+
+    def setNoActionInClient(self):
+        for component in self.components:
+            for action in component.actions:
+                action.InClient = False
+        for action in self.actions:
+            action.InClient = False
 
     def getComponentById(self, component_id):
         for component in self.components:

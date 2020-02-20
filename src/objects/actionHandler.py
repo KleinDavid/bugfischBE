@@ -47,6 +47,7 @@ class ActionHandler:
 
         if from_client:
             self.serverResult.Actions = self.session.getActionsForResult()
+            self.serverResult.ActionIds = self.session.getCurrentActionIds()
             self.loggingService.logServerResult(self.serverResult)
 
     def setActionToScreenContext(self, action):
@@ -78,6 +79,7 @@ class ActionHandler:
             return {'Token': self.session.token, 'ComponentName': screen['ComponentName']}
         else:
             self.session = self.sessionService.getSessionByToken(token)
+            self.session.setNoActionInClient()
             return {'Token': self.session.token, 'ComponentName': self.session.getCurrentComponent().name}
 
     def loginAction(self, data):

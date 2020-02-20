@@ -7,6 +7,7 @@ class DataService:
 
     _dataBase = None
     __instance = None
+    __loggingService = LoggingService()
 
     @staticmethod
     def getInstance():
@@ -20,9 +21,16 @@ class DataService:
         else:
             DataService.__instance = self
 
+        self.getDataBaseConnection()
+
+    def getDataBaseConnection(self):
         try:
             connection = mysql.connector.connect(
                 host="localhost",
+                #database="jschelp",
+                #user="jschelp",
+                #passwd="HU&43jdJK)82HU&43jdJK)82",
+                #use_pure=True)
                 database="jugend",
                 user="root",
                 passwd="HU&43jdJK)82")
@@ -36,7 +44,15 @@ class DataService:
                 self._dataBase = connection
 
         except Error as e:
-            print("Error while connecting to MySQL", e)
+            print("Error while connecting to MySQLuuu: ", e)
+
+    def checkDataBaseConnection(self):
+        if self._dataBase.is_connected():
+            return True
+        else:
+            self._dataBase.close()
+            self.getDataBaseConnection()
+            return False
 
     def check_passwords(self, password):
         cursor = self._dataBase.cursor(dictionary=True)
@@ -98,7 +114,6 @@ class DataService:
 
     def getServerActionDescriptions(self):
         cursor = self._dataBase.cursor(dictionary=True)
-        print('SELECT * FROM `serveractions` WHERE Opening = \'1\'')
         cursor.execute('SELECT * FROM `serveractions` WHERE Opening = \'1\'');
         res = cursor.fetchall()
         if not res:
@@ -112,6 +127,7 @@ class DataService:
         if not res:
             return None
         res[0]['Properties'] = res[0]['Properties'].replace(' ', '')
+        self._dataBase.commit()
         return res[0]
 
     def mapDataBaseResultToObject(self, table, select_by, select_value, result_object):
@@ -159,7 +175,7 @@ class DataService:
         self._dataBase.commit()
 
     def getDataPackage(self, data_type, where_statemante):
-        query = 'SELECT * FROM `' + data_type.lower() + '` WHERE ' + where_statemante
+        query = 'SELECT * FROM ' + data_type.lower() + ' WHERE \'' + where_statemante + '\''
         cursor = self._dataBase.cursor(dictionary=True)
         cursor.execute(query)
         res = cursor.fetchall()

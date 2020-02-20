@@ -1,12 +1,13 @@
 from models.ServerAction import ServerAction
 from models.ServerResult import ServerResult
 from objects.actionHandler import ActionHandler
+from services.dataService import DataService
 from services.loggingService import LoggingService
 from services.sessionService import SessionService
 
 
 class ActionService:
-    dataService = {}
+    dataService = DataService.getInstance()
     sessionService = SessionService.getInstance()
     actionResultData = {}
     loggingService = LoggingService()
@@ -25,18 +26,25 @@ class ActionService:
         else:
             ActionService.__instance = self
 
-    def executeAction(self, action):
-        session = self.sessionService.getSessionByToken(action.Token)
+    def executeAction(self, output_action):
+        if not self.dataService.checkDataBaseConnection():
+            res = ServerResult()
+            res.Error = 'No Data Base Connection'
+            return res
+        session = self.sessionService.getSessionByToken(output_action.Token)
         if session is None:
-            action = ServerAction()
-            action.Type = 'InitializeSessionAction'
-            action.Input = {}
-            action.Input['Token'] = ''
+            output_action = ServerAction()
+            output_action.Type = 'InitializeSessionAction'
+            output_action.Input = {}
+            output_action.Input['Token'] = ''
             session = self.sessionService.getSessionByToken(self.sessionService.generate_session_and_token())
-        if not session.checkIfActionIsAvailable(action):
+        action = session.getActionByOutputAction(output_action)
+        if action is None:
             result = ServerResult()
             result.Error = 'Action Not Available'
             return result
+        action.Input = output_action.Input
+
         action_handler = ActionHandler(action, session)
         action_handler.executeAction(True)
         return action_handler.serverResult

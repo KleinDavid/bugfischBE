@@ -7,6 +7,7 @@ class ServerAction:
     Context = ''
     Execute = ''
     ComponentId = ''
+    InClient = ''
 
     def __init__(self):
         self.Name = ''
@@ -16,3 +17,4 @@ class ServerAction:
         self.Id = ''
         self.Execute = ''
         self.ComponentId = ''
+        self.InClient = False
