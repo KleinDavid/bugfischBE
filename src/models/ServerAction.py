@@ -1,13 +1,4 @@
 class ServerAction:
-    Name = ''
-    Type = ''
-    Input = {}
-    Token = ''
-    Id = ''
-    Context = ''
-    Execute = ''
-    ComponentId = ''
-    InClient = ''
 
     def __init__(self):
         self.Name = ''
@@ -18,3 +9,15 @@ class ServerAction:
         self.Execute = ''
         self.ComponentId = ''
         self.InClient = False
+        self.InputValues = []
+        self.NextActions = []
+
+        # {name, binding}
+        self.Bindings = []
+
+    def setBindings(self, data):
+        for binding in self.Bindings:
+            value = data
+            for key in binding['binding'].split('.'):
+                value = value[key]
+            self.Input[binding['name']] = value

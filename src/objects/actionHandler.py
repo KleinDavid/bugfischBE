@@ -65,7 +65,7 @@ class ActionHandler:
             "GetDataAction": self.getDataAction,
             "InitializeSessionAction": self.initializeSessionAction,
             "LogoutAction": self.logoutAction,
-            "FilterDataAction": self.filterDataActoin
+            "FilterDataAction": self.filterDataAction
         }
         func = switcher.get(action.Type, lambda: "Invalid month")
         return func(action.Input)
@@ -132,7 +132,7 @@ class ActionHandler:
         token = data['Token']
         self.sessionService.logout(token)
 
-    def filterDataActoin(self, data):
+    def filterDataAction(self, data):
         data_package = self.component.getDataByName(data['DataType'])
         return_data_package = {}
         property_path = data['Property'].split('.')

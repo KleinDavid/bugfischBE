@@ -1,4 +1,5 @@
 from datetime import datetime
+from pprint import pprint
 
 
 class LoggingService:
@@ -26,6 +27,10 @@ class LoggingService:
 
         string = string + ']'
         self.log(string)
+
+    @staticmethod
+    def logObject(my_object):
+        pprint(vars(my_object))
 
 
 class Bcolors:
