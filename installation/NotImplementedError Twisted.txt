@@ -1,0 +1,27 @@
+pip install PathToFile/Twisted-19.10.0-cp38-cp38-win_amd64.whl
+
+gehe zu:
+packages/twisted/internet/asyncioreactor.py
+
+ersetze:
+
+from twisted.internet.interfaces import IReactorFDSet
+
+try:
+    from asyncio import get_event_loop
+except ImportError:
+    raise ImportError("Requires asyncio.")
+
+durch:
+
+from twisted.internet.interfaces import IReactorFDSet
+
+import sys
+
+try:
+    from asyncio import get_event_loop, set_event_loop_policy, WindowsSelectorEventLoopPolicy
+except ImportError:
+    raise ImportError("Requires asyncio.")
+
+if sys.platform == 'win32':
+    set_event_loop_policy(WindowsSelectorEventLoopPolicy())

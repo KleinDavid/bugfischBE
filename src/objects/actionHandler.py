@@ -2,6 +2,7 @@ from models.ServerAction import ServerAction
 from models.ServerActionDescription import ServerActionDescription
 from models.ServerResult import ServerResult
 from objects.actionParser import ActionParser
+from services.configService import ConfigService
 from services.dataService import DataService
 from services.loggingService import LoggingService
 from services.sessionService import SessionService
@@ -17,31 +18,56 @@ class ActionHandler:
     dataService = DataService.getInstance()
     sessionService = SessionService.getInstance()
     component = {}
+    configService = ConfigService.getInstance()
 
     def __init__(self, action, session):
         self.actionResultData = {}
+        self.actionOutputData = {}
         self.serverResult = ServerResult()
         self.action = action
         self.session = session
         self.actionParser = ActionParser(self.actionResultData)
         self.component = self.session.getCurrentComponent()
 
-    def executeAction(self, from_client):
+    def executeAction2(self, from_client):
+        self.loggingService.log('execute Action ' + str(self.action.Type) + ' | Input: ' + str(self.action.Input))
+        action_config = self.configService.getActionConfigByType(self.action.Type)
+        self.actionOutputData[action_config.outputData] = self.runAction(self.action)
 
+        for client_action in action_config.outputClientActions:
+            client_action.setBindings(self.actionOutputData)
+            self.setActionToScreenContext(client_action)
+
+        for action_object in action_config.outputServerActions:
+            action_object.setBindings(self.actionOutputData)
+            self.setActionToScreenContext(action_object)
+
+        for action_object in action_config.useActions:
+            self.loggingService.logObject(action_object)
+            self.action = action_object
+            self.action.setBindings(self.actionOutputData)
+            self.executeAction2(False)
+
+        if from_client:
+            self.serverResult.Actions = self.session.getActionsForResult()
+            self.serverResult.ActionIds = self.session.getCurrentActionIds()
+            self.loggingService.logServerResult(self.serverResult)
+
+    def executeAction(self, from_client):
         self.loggingService.log('execute Action ' + str(self.action.Type) + ' | Input: ' + str(self.action.Input))
 
         action_description = ServerActionDescription()
         self.dataService.mapDataBaseResultToObject('serveractions', 'Type', self.action.Type, action_description)
-        action_description.OutputClientAction = action_description.OutputClientAction.replace(' ', '').split(",")
+        action_description.OutputClientActions = action_description.OutputClientActions.replace(' ', '').split(",")
         self.actionResultData[action_description.OutputData] = self.runAction(self.action)
 
-        for client_action in self.actionParser.getActionsByArray(action_description.OutputClientAction):
+        for client_action in self.actionParser.getActionsByArray(action_description.OutputClientActions):
             self.setActionToScreenContext(client_action)
 
-        for action_object in self.actionParser.getActionsByArray(action_description.OutputServerAction.split(',')):
+        for action_object in self.actionParser.getActionsByArray(action_description.OutputServerActions.split(',')):
             self.setActionToScreenContext(action_object)
 
-        for action_object in self.actionParser.getActionsByArray(action_description.UseAction.split(',')):
+        for action_object in self.actionParser.getActionsByArray(action_description.UseActions.split(',')):
             self.action = action_object
             self.executeAction(False)
 
@@ -51,7 +77,6 @@ class ActionHandler:
             self.loggingService.logServerResult(self.serverResult)
 
     def setActionToScreenContext(self, action):
-        action.Execute = self.dataService.getServerActionDescription(action.Type)['Execute']
         if self.component is not None and action.Context == 'Component':
             action.ComponentId = self.component.Id
         self.session.setNewAction(action)
@@ -76,11 +101,11 @@ class ActionHandler:
         if token == '':
             self.session = self.sessionService.getSessionByToken(self.sessionService.generate_session_and_token())
             screen = self.dataService.getScreenByStartScreen('Init')
-            return {'Token': self.session.token, 'ComponentName': screen['ComponentName']}
+            return {'Token': self.session.token, 'ComponentName': screen['ComponentName'], 'WebsocketPath': self.session.websocket.path}
         else:
             self.session = self.sessionService.getSessionByToken(token)
             self.session.setNoActionInClient()
-            return {'Token': self.session.token, 'ComponentName': self.session.getCurrentComponent().name}
+            return {'Token': self.session.token, 'ComponentName': self.session.getCurrentComponent().name, 'WebsocketPath': self.session.websocket.path}
 
     def loginAction(self, data):
         password = data['Password']
@@ -105,6 +130,9 @@ class ActionHandler:
 
     def routeAfterLoginAction(self, data):
         role = data['Role']
+        print(role)
+        return {'ComponentName': self.configService.getScreenConfigByStartScreen(role).componentName}
+
         screen = self.dataService.getScreenByStartScreen(role)
         if role == 'Admin':
             return {'ComponentName': screen['ComponentName']}
@@ -115,16 +143,16 @@ class ActionHandler:
 
     def changeRouteAction(self, data):
         component_name = data['ComponentName']
-        routedata = self.dataService.getRouteData(component_name)
+        screen_config = self.configService.getScreenConfigByComponentName(component_name)
         self.component = self.session.createNewComponent(component_name)
-        if routedata is None:
+        if screen_config is None:
             self.serverResult.Error = 'Component not Found'
             return{'ComponentName': ''}
-        for action in self.actionParser.getActionsByArray(routedata["OutputServerActions"].split(",")):
+        for action in screen_config.outputServerActions:
             self.setActionToScreenContext(action)
-        for action_object in self.actionParser.getActionsByArray(routedata['UseAction'].split(',')):
+        for action_object in screen_config.useActions:
             self.action = action_object
-            self.executeAction(False)
+            self.executeAction2(False)
 
         return {'ComponentName': component_name, 'DeleteActionIds': []}
 

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from models.ServerAction import ServerAction
 from models.ServerResult import ServerResult
 from objects.actionHandler import ActionHandler
@@ -15,7 +16,7 @@ class ActionService:
     __instance = None
 
     @staticmethod
-    def getInstance():
+    def getInstance() -> ActionService:
         if ActionService.__instance is None:
             ActionService()
         return ActionService.__instance
@@ -46,6 +47,6 @@ class ActionService:
         action.Input = output_action.Input
 
         action_handler = ActionHandler(action, session)
-        action_handler.executeAction(True)
+        action_handler.executeAction2(True)
         return action_handler.serverResult
 

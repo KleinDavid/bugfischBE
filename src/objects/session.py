@@ -1,23 +1,17 @@
 import string
 import random
 
-from models.ServerAction import ServerAction
 from objects.component import Component
-from objects.screenContext import ScreenContext
+from objects.websocket.consumerWebsocket import CostumerWebsocket
+from services.configService import ConfigService
 from services.dataService import DataService
+from services.loggingService import LoggingService
 
 
 class Session:
-    dataService = DataService.getInstance()
-    token = ''
-    id = ''
-    loginState = ''
-
-    totalTime = 0
-    lastRequestInSeconds = 0
-
-    actions = []
-    components = []
+    __dataService__ = DataService.getInstance()
+    __loggingService__ = LoggingService()
+    __configService__ = ConfigService.getInstance()
 
     def __init__(self, session_id):
         self.token = self.get_random_string(20) + str(session_id)
@@ -27,14 +21,9 @@ class Session:
         self.totalTime = 0
         self.lastRequestInSeconds = 0
         self.loginState = ''
+        self.websocket = CostumerWebsocket()
 
-        action_decriptions = self.dataService.getServerActionDescriptions()
-        for action_decription in action_decriptions:
-            if action_decription['Opening'] == '1':
-                action = ServerAction()
-                action.Type = action_decription['Type']
-                action.Name = action_decription['Type']
-                self.actions.append(action)
+        self.actions = self.actions + self.__configService__.getAllOpeningActions()
 
     @staticmethod
     def get_random_string(string_length=10):
@@ -42,12 +31,11 @@ class Session:
         return ''.join(random.choice(letters) for i in range(string_length))
 
     def login(self, password):
-        if self.dataService.check_passwords(password):
-            return {'Token': self.token, 'Role': self.dataService.getRoleByPassword(password)}
+        if self.__dataService__.check_passwords(password):
+            return {'Token': self.token, 'Role': self.__dataService__.getRoleByPassword(password)}
         return None
 
     def getActionByOutputAction(self, output_action):
-        # self.printSessionActoins()
         for current_action in self.actions:
             if current_action.Type == output_action.Type and current_action.Id == output_action.Id:
                 current_action.InClient = False
@@ -72,11 +60,12 @@ class Session:
         return component
 
     def setNewAction(self, action):
+        self.__loggingService__.logObject(action)
         if action.Context == 'Component':
             component = self.getComponentById(action.ComponentId)
             component.addAction(action)
             return
-        action.Id = self.getNewActionId()
+        action.setActionId('', self.actions)
         self.actions.append(action)
 
     def getActionsForResult(self):
@@ -89,6 +78,8 @@ class Session:
         result_actions = list(filter(lambda x: not x.InClient, result_actions))
         self.actions = list(filter(lambda x: x.Execute != 'Client', self.actions))
         for action in self.actions:
+            action.InClient = True
+        for action in component_actions:
             action.InClient = True
         self.lastRequestInSeconds = 0
         return result_actions
@@ -114,16 +105,6 @@ class Session:
             if component.Id == component_id:
                 return component
         return None
-
-    def getNewActionId(self):
-        highest_id = 0
-        for action in self.actions:
-            if action.Id != '':
-                current_id = int(action.Id.split('-')[1])
-                if current_id > highest_id:
-                    highest_id = current_id
-        letters = string.ascii_uppercase
-        return (''.join(random.choice(letters) for i in range(6))) + '-' + str(highest_id + 1)
 
     def getNewComponentId(self):
         highest_id = 0

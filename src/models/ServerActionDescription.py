@@ -2,9 +2,9 @@ class ServerActionDescription:
     ID = ''
     Type = ''
     OutputData = []
-    OutputServerAction = []
-    OutputClientAction = []
-    UseAction = []
+    OutputServerActions = []
+    OutputClientActions = []
+    UseActions = []
     Intern = 0
     Input = []
 
@@ -13,7 +13,7 @@ class ServerActionDescription:
         self.Type = ''
         self.Input = []
         self.OutputData = []
-        self.OutputServerAction = []
-        self.OutputClientAction = []
-        self.UseAction = []
+        self.OutputServerActions = []
+        self.OutputClientActions = []
+        self.UseActions = []
         self.Intern = 0

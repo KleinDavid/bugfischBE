@@ -1,10 +1,13 @@
+from __future__ import annotations
 import mysql.connector
-from mysql.connector import Error
+from models.ServerAction import ServerAction
 from objects.configObjects.actionConfig import ActionConfig
 from objects.configObjects.dataPackageConfig import DataPackageConfig
 from objects.configObjects.dea import Dea
 from objects.configObjects.screenConfig import ScreenConfig
 from services.loggingService import LoggingService
+
+import copy
 
 
 class ConfigService:
@@ -13,7 +16,7 @@ class ConfigService:
     __loggingService = LoggingService()
 
     @staticmethod
-    def getInstance():
+    def getInstance() -> ConfigService:
         if ConfigService.__instance is None:
             ConfigService()
         return ConfigService.__instance
@@ -30,7 +33,6 @@ class ConfigService:
         self.dataPackageConfigs = []
         self.dea = Dea()
 
-    def initConfig(self):
         connection = mysql.connector.connect(
             # database="jschelp",
             # user="jschelp",
@@ -52,19 +54,20 @@ class ConfigService:
             cursor = config_data_base.cursor(dictionary=True)
             cursor.execute("SELECT * FROM datapackages")
             result = cursor.fetchall()
-            self.initDataPackageConfigs(result)
+            self.__initDataPackageConfigs__(result)
 
             cursor = connection.cursor(dictionary=True)
             cursor.execute("SELECT * FROM serveractions")
             result = cursor.fetchall()
-            self.initActionConfigs(result)
+            self.__initActionConfigs__(result)
 
             cursor = config_data_base.cursor(dictionary=True)
             cursor.execute("SELECT * FROM screenconfig")
             result = cursor.fetchall()
-            self.initScreenConfigs(result)
+            self.__initScreenConfigs__(result)
 
-    def initActionConfigs(self, data):
+    def __initActionConfigs__(self, data):
+        print('hallo')
         for action_decription in data:
             action_config = ActionConfig()
             action_config.type = action_decription['Type']
@@ -76,30 +79,48 @@ class ConfigService:
 
         counter = 0
         for action_config in self.actionConfigs:
-            action_config.outputClientActions = self.dea.getActionsByString(data[counter]['OutputClientAction'], self.dataPackageConfigs, self.actionConfigs)
-            action_config.outputServerActions = self.dea.getActionsByString(data[counter]['OutputServerAction'], self.dataPackageConfigs, self.actionConfigs)
-            action_config.useActions = self.dea.getActionsByString(data[counter]['UseAction'], self.dataPackageConfigs, self.actionConfigs)
+            action_config.outputClientActions = self.dea.getActionsByString(data[counter]['OutputClientActions'], self.dataPackageConfigs, self.actionConfigs)
+            action_config.outputServerActions = self.dea.getActionsByString(data[counter]['OutputServerActions'], self.dataPackageConfigs, self.actionConfigs)
+            action_config.useActions = self.dea.getActionsByString(data[counter]['UseActions'], self.dataPackageConfigs, self.actionConfigs)
+            counter = counter + 1
 
-    def initScreenConfigs(self, data):
+    def __initScreenConfigs__(self, data):
         for screen_decription in data:
             screen_config = ScreenConfig()
             screen_config.outputServerActions = self.dea.getActionsByString(screen_decription['OutputServerActions'], self.dataPackageConfigs, self.actionConfigs)
-            screen_config.useAction = self.dea.getActionsByString(screen_decription['UseAction'], self.dataPackageConfigs, self.actionConfigs)
+            screen_config.useActions = self.dea.getActionsByString(screen_decription['UseActions'], self.dataPackageConfigs, self.actionConfigs)
             screen_config.componentName = screen_decription['ComponentName']
             screen_config.startScreen = screen_decription['StartScreen']
-            for ua in screen_config.useAction:
-                self.__loggingService.logObject(ua)
+            self.screenConfigs.append(screen_config)
 
-    def initReferenceConfigs(self, data):
+    def __initReferenceConfigs__(self, data):
         for reference_decription in data:
             print('')
 
-    def initDataPackageConfigs(self, data):
+    def __initDataPackageConfigs__(self, data):
         for data_package_decription in data:
             data_package_config = DataPackageConfig()
             data_package_config.name = data_package_decription['Name']
             data_package_config.properties = data_package_decription['Properties'].replace(' ', '').split(',')
             self.dataPackageConfigs.append(data_package_config)
 
-    def getActionsByArrayString(self, array_str):
-        counter = 0
+    def getScreenConfigByComponentName(self, name) -> ScreenConfig:
+        return copy.deepcopy(list(filter(lambda x: x.componentName == name, self.screenConfigs))[0])
+
+    def getScreenConfigByStartScreen(self, start_screen) -> ScreenConfig:
+        for i in self.screenConfigs:
+            self.__loggingService.logObject(i)
+        return copy.deepcopy(list(filter(lambda x: x.startScreen == start_screen, self.screenConfigs))[0])
+
+    def getActionConfigByType(self, _type):
+        return copy.deepcopy(list(filter(lambda x: x.type == _type, self.actionConfigs))[0])
+
+    def getAllOpeningActions(self):
+        action_descriptions = list(filter(lambda x: x.opening == '1', self.actionConfigs))
+        actions = []
+        for action_description in action_descriptions:
+            action = ServerAction()
+            action.Type = action_description.type
+            action.Name = action_description.type
+            actions.append(action)
+        return actions

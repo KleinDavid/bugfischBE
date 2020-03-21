@@ -88,9 +88,9 @@ class Dea:
                 if not next_action_state:
                     if value['valueName'] == 'type':
                         action.Type = value['value']
+                        action.Name = value['value']
 
                     if value['valueName'] == 'inputValueConst' or value['valueName'] == 'inputValueBinding' or value['valueName'] == 'inputValueNew' or value['valueName'] == 'inputValueName':
-                        action.InputDescriptions.append({'valueName': value['valueName'], 'value': value['value']})
                         action_input_descriptions.append({'valueName': value['valueName'], 'value': value['value']})
 
                     if value['valueName'] == 'actionPropertyName':
@@ -102,9 +102,9 @@ class Dea:
                 else:
                     if value['valueName'] == 'type':
                         next_action.Type = value['value']
+                        next_action.Name = value['value']
 
                     if value['valueName'] == 'inputValueConst' or value['valueName'] == 'inputValueName' or value['valueName'] == 'inputValueNew' or value['valueName'] == 'inputValueName':
-                        next_action.InputDescriptions.append({'valueName': value['valueName'], 'value': value['value']})
                         next_action_input_descriptions.append({'valueName': value['valueName'], 'value': value['value']})
 
                     if value['valueName'] == 'actionPropertyName':
@@ -112,6 +112,7 @@ class Dea:
 
                     if value['valueName'] == 'nextAction':
                         self.__setInputValues__(next_action, next_action_input_descriptions, action_configs, data_package_configs)
+                        self.__setActionContext__(action)
                         action.NextActions.append(next_action)
                         next_action = ServerAction()
                         next_action_input_descriptions = []
@@ -120,7 +121,9 @@ class Dea:
             if next_action_state:
                 action.NextActions.append(next_action)
             self.__setInputValues__(action, action_input_descriptions, action_configs, data_package_configs)
-            self.loggingService.logObject(action)
+            self.__setActionExecute__(action, action_configs)
+            self.__setActionContext__(action)
+
             actions.append(action)
         return actions
 
@@ -214,8 +217,8 @@ class Dea:
         for input_description in action_input_descriptions:
             if input_description['valueName'] == 'inputValueConst' or input_description['valueName'] == 'inputValueBinding' or input_description['valueName'] == 'inputValueNew':
                 name = ''
-                if action.InputDescriptions[counter - 1]['valueName'] == 'inputValueName':
-                    name = action.InputDescriptions[counter - 1]['value']
+                if action_input_descriptions[counter - 1]['valueName'] == 'inputValueName':
+                    name = action_input_descriptions[counter - 1]['value']
                 input_values.append({'type': input_description['valueName'], 'input': input_description['value'], 'name': name})
             counter = counter + 1
 
@@ -255,6 +258,21 @@ class Dea:
             else:
                 data_package[_property] = ''
         return data_package
+
+    @staticmethod
+    def __setActionContext__(action):
+        if action.Execute == 'Client':
+            action.Context = ''
+        else:
+            if action.Context == '':
+                action.Context = 'Component'
+
+    @staticmethod
+    def __setActionExecute__(action, action_configs):
+        for action_config in action_configs:
+            if action_config.type == action.Type:
+                action.Execute = action_config.execute
+                action.Opening = action_config.opening
 
 
 class Transition:

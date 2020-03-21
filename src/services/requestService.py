@@ -5,18 +5,20 @@ from rest_framework.response import Response
 from json import JSONEncoder
 
 from services.configService import ConfigService
+from services.websocketService import WebsocketService
 
 
 class RequestService:
     actionService = ActionService.getInstance()
     configService = ConfigService.getInstance()
+    websocketSerice = WebsocketService()
+    websocketSerice.startServer()
 
     @staticmethod
     def get_data_from_request(request):
         return json.loads(request.body.decode('utf-8'))['data']
 
     def handleExecuteAction(self, request):
-        self.configService.initConfig()
         data = self.get_data_from_request(request)
         server_action = ServerAction
         server_action.Type = data["Type"]

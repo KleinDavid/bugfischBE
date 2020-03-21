@@ -1,0 +1,10 @@
+pip install channels
+pip install websockets
+pip install django==2.4
+pip install djangorestframework
+pip install django-rest-auth==0.9.3
+pip install django-allauth==0.39.1
+pip install django-cors-headers
+pip install cryptography
+pip install mysql-connector-python==8.0.11
+pip install redis==2.10.6
