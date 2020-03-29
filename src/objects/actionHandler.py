@@ -6,6 +6,7 @@ from services.configService import ConfigService
 from services.dataService import DataService
 from services.loggingService import LoggingService
 from services.sessionService import SessionService
+from services.taskService import TaskService
 
 
 class ActionHandler:
@@ -19,6 +20,7 @@ class ActionHandler:
     sessionService = SessionService.getInstance()
     component = {}
     configService = ConfigService.getInstance()
+    __taskService = TaskService.getInstance()
 
     def __init__(self, action, session):
         self.actionResultData = {}
@@ -28,24 +30,40 @@ class ActionHandler:
         self.session = session
         self.actionParser = ActionParser(self.actionResultData)
         self.component = self.session.getCurrentComponent()
+        self.updateGlobalData()
+
+    def updateGlobalData(self):
+        # add current Task
+        self.actionOutputData['Global'] = {}
+        self.actionOutputData['Global']['Tasks'] = self.__taskService.getCurrentTasksBySessionTotalId(self.session.totalId)
 
     def executeAction2(self, from_client):
         self.loggingService.log('execute Action ' + str(self.action.Type) + ' | Input: ' + str(self.action.Input))
         action_config = self.configService.getActionConfigByType(self.action.Type)
         self.actionOutputData[action_config.outputData] = self.runAction(self.action)
 
+        # config
         for client_action in action_config.outputClientActions:
-            client_action.setBindings(self.actionOutputData)
+            client_action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
             self.setActionToScreenContext(client_action)
 
         for action_object in action_config.outputServerActions:
-            action_object.setBindings(self.actionOutputData)
+            action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
             self.setActionToScreenContext(action_object)
 
         for action_object in action_config.useActions:
-            self.loggingService.logObject(action_object)
             self.action = action_object
-            self.action.setBindings(self.actionOutputData)
+            self.action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+            self.executeAction2(False)
+
+        # action specific
+        for action_object in self.action.OutputServerActions:
+            action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+            self.setActionToScreenContext(action_object)
+
+        for action_object in self.action.NextActions:
+            self.action = action_object
+            self.action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
             self.executeAction2(False)
 
         if from_client:
@@ -90,7 +108,8 @@ class ActionHandler:
             "GetDataAction": self.getDataAction,
             "InitializeSessionAction": self.initializeSessionAction,
             "LogoutAction": self.logoutAction,
-            "FilterDataAction": self.filterDataAction
+            "FilterDataAction": self.filterDataAction,
+            "StartNewTaskAction": self.startNewTaskAction
         }
         func = switcher.get(action.Type, lambda: "Invalid month")
         return func(action.Input)
@@ -118,6 +137,26 @@ class ActionHandler:
         return login_data
 
     def getDataAction(self, data):
+        if 'Next' in data['WhereStatement']:
+            number_of_next_values = 1
+            if len(data['WhereStatement'].split(' ')) > 2:
+                number_of_next_values = data['WhereStatement'].split(' ')[1]
+            current_data_in_client_object = self.component.getDataByName(data['DataType'])
+            if current_data_in_client_object is None:
+                min_id = self.dataService.getMinIdByDataType(data['DataType'])
+                data['WhereStatement'] = 'Id >= ' + str(min_id) + ' AND Id < ' + str(min_id + int(number_of_next_values))
+            else:
+                current_data_in_client_list = [current_data_in_client_object[0]]
+                counter = 0
+                while counter in current_data_in_client_object is not None:
+                    current_data_in_client_list.append(current_data_in_client_object[counter])
+                    counter += 1
+                highest_id = 0
+                for value in current_data_in_client_list:
+                    if value['Id'] > highest_id:
+                        highest_id = value['Id']
+                data['WhereStatement'] = 'Id > ' + str(highest_id) + ' AND Id <= ' + str(highest_id + int(number_of_next_values))
+
         data_object = self.dataService.getDataPackage(data['DataType'], data['WhereStatement'])
         self.component.data[data['DataType']] = data_object
         return {'Name': data['DataType'], 'Data': data_object}
@@ -125,21 +164,17 @@ class ActionHandler:
     def saveDataAction(self, data):
         table_name = data['DataType']
         data = data['Data']
-        self.dataService.saveDataPackageInDataBase(table_name, data)
+        if '0' in data:
+            counter = 0
+            while str(counter) in data:
+                self.dataService.saveDataPackageInDataBase(table_name, data[str(counter)])
+                counter += 1
+        else:
+            self.dataService.saveDataPackageInDataBase(table_name, data)
         return {'Name': 'SaveSucces', 'Data': 'True'}
 
     def routeAfterLoginAction(self, data):
-        role = data['Role']
-        print(role)
-        return {'ComponentName': self.configService.getScreenConfigByStartScreen(role).componentName}
-
-        screen = self.dataService.getScreenByStartScreen(role)
-        if role == 'Admin':
-            return {'ComponentName': screen['ComponentName']}
-        if role == 'User':
-            return {'ComponentName': screen['ComponentName']}
-
-        return {'ComponentName': screen['ComponentName']}
+        return {'ComponentName': self.configService.getScreenConfigByStartScreen(data['Role']).componentName}
 
     def changeRouteAction(self, data):
         component_name = data['ComponentName']
@@ -176,3 +211,10 @@ class ActionHandler:
                         return_data_package[counter] = data_package[value_id]
                         counter = counter + 1
         return {'Name': data['DataType'], 'Data': return_data_package}
+
+    def startNewTaskAction(self, data):
+        self.__taskService.createNewTask(data['TaskName'], self.session.totalId)
+        self.updateGlobalData()
+        return {}
+
+

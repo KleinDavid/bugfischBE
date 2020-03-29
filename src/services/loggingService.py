@@ -6,8 +6,7 @@ class LoggingService:
 
     @staticmethod
     def log(message):
-        now = datetime.now()
-        dt_string = '[' + now.strftime("%d/%b/%Y %H:%M:%S") + ']'
+        dt_string = '[' + datetime.now().strftime("%d/%b/%Y %H:%M:%S") + ']'
         massage_string = dt_string + ' "' + message + '"'
         print(massage_string)
         file = open("log.log", "a")

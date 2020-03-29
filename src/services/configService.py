@@ -2,8 +2,10 @@ from __future__ import annotations
 import mysql.connector
 from models.ServerAction import ServerAction
 from objects.configObjects.actionConfig import ActionConfig
+from objects.configObjects.actionDescriptionConfig import ActionDescriptionConfig
 from objects.configObjects.dataPackageConfig import DataPackageConfig
 from objects.configObjects.dea import Dea
+from objects.configObjects.referenceConfig import ReferenceConfig
 from objects.configObjects.screenConfig import ScreenConfig
 from services.loggingService import LoggingService
 
@@ -62,12 +64,21 @@ class ConfigService:
             self.__initActionConfigs__(result)
 
             cursor = config_data_base.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM `actiondescriptions`")
+            result = cursor.fetchall()
+            self.__initActionDescriptions__(result)
+
+            cursor = config_data_base.cursor(dictionary=True)
             cursor.execute("SELECT * FROM screenconfig")
             result = cursor.fetchall()
             self.__initScreenConfigs__(result)
 
+            cursor = config_data_base.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM `references`")
+            result = cursor.fetchall()
+            self.__initReferenceConfigs__(result)
+
     def __initActionConfigs__(self, data):
-        print('hallo')
         for action_decription in data:
             action_config = ActionConfig()
             action_config.type = action_decription['Type']
@@ -93,9 +104,29 @@ class ConfigService:
             screen_config.startScreen = screen_decription['StartScreen']
             self.screenConfigs.append(screen_config)
 
+    def __initActionDescriptions__(self, data):
+        for action_description in data:
+            print('##################', action_description)
+            action_decription_config = ActionDescriptionConfig()
+            action_decription_config.action = self.dea.getActionsByString(action_description['Description'], self.dataPackageConfigs, self.actionConfigs)[0]
+            action_decription_config.name = action_description['Name']
+            action_decription_config.id = action_description['ID']
+            self.__loggingService.logObject(action_decription_config.action)
+            self.actionDescriptionConfigs.append(action_decription_config)
+
     def __initReferenceConfigs__(self, data):
         for reference_decription in data:
-            print('')
+
+            reference = ReferenceConfig()
+            reference.ID = reference_decription['ID']
+            reference.Type = reference_decription['Type']
+            reference.ChildField = reference_decription['ChildField']
+            reference.ChildFieldNames = reference_decription['ChildFieldNames'].replace(' ', '').split(',')
+            reference.ChildTable = reference_decription['ChildTable']
+            reference.ParentField = reference_decription['ParentField']
+            reference.ParentFieldName = reference_decription['ParentFieldName']
+            reference.ParentTable = reference_decription['ParentTable']
+            self.referenceConfigs.append(reference)
 
     def __initDataPackageConfigs__(self, data):
         for data_package_decription in data:
@@ -108,8 +139,6 @@ class ConfigService:
         return copy.deepcopy(list(filter(lambda x: x.componentName == name, self.screenConfigs))[0])
 
     def getScreenConfigByStartScreen(self, start_screen) -> ScreenConfig:
-        for i in self.screenConfigs:
-            self.__loggingService.logObject(i)
         return copy.deepcopy(list(filter(lambda x: x.startScreen == start_screen, self.screenConfigs))[0])
 
     def getActionConfigByType(self, _type):
@@ -124,3 +153,10 @@ class ConfigService:
             action.Name = action_description.type
             actions.append(action)
         return actions
+
+    def getReferenceConfigListByParentTable(self, parent_table):
+        return list(filter(lambda x: x.ParentTable == parent_table, self.referenceConfigs))
+
+    def getDatPackageConfigByName(self, name) -> DataPackageConfig:
+        return list(filter(lambda x: x.name == name, self.dataPackageConfigs))[0]
+

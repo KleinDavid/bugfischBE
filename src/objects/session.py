@@ -14,6 +14,7 @@ class Session:
     __configService__ = ConfigService.getInstance()
 
     def __init__(self, session_id):
+        self.totalId = None
         self.token = self.get_random_string(20) + str(session_id)
         self.id = session_id
         self.components = []
@@ -60,7 +61,6 @@ class Session:
         return component
 
     def setNewAction(self, action):
-        self.__loggingService__.logObject(action)
         if action.Context == 'Component':
             component = self.getComponentById(action.ComponentId)
             component.addAction(action)

@@ -40,6 +40,7 @@ class SessionService:
                 highest_id = session.id
 
         session = Session(highest_id + 1)
+        session.totalId = self._dataService.saveNewSession(session)
         self._sessions.append(session)
         LoggingService.log('new Session: ' + session.token)
         return session.token

@@ -54,11 +54,26 @@ class Dea:
             Transition(13, ';', 10, ''),
             Transition(13, '}', 14, ''),
 
+            Transition(14, '=', 15, 'outputServerAction'),
+            Transition(9, '=', 15, 'outputServerAction'),
             Transition(14, '-', 15, 'nextAction'),
+            Transition(9, '-', 15, 'nextAction'),
             Transition(15, '>', -1, ''),
 
             Transition(14, ';', -1, 'newAction'),
             Transition(9, ';', -1, 'newAction'),
+
+
+            Transition(3, '(', 16, ''),
+            Transition(1, '(', 16, ''),
+            Transition(16, 'any*', 16, 'komplexCode'),
+            Transition(16, '(', 17, 'komplexCode'),
+            Transition(17, 'any*', 17, 'komplexCode'),
+            Transition(17, ')', 18, 'komplexCode'),
+            Transition(18, 'any*', 18, 'komplexCode'),
+            Transition(18, ')', 19, ''),
+            Transition(19, ',', 1, ''),
+            Transition(19, ')', 9, ''),
         ]
 
     def getActionsByString(self, actions_string, data_package_configs, action_configs):
@@ -79,32 +94,22 @@ class Dea:
             action = ServerAction()
             action_input_descriptions = []
 
+            # also outputServerAction
             next_action = ServerAction()
             next_action_input_descriptions = []
 
             next_action_state = False
+            output_server_action_state = False
             counter = 0
+
             for value in action_value_list:
-                if not next_action_state:
-                    if value['valueName'] == 'type':
-                        action.Type = value['value']
-                        action.Name = value['value']
-
-                    if value['valueName'] == 'inputValueConst' or value['valueName'] == 'inputValueBinding' or value['valueName'] == 'inputValueNew' or value['valueName'] == 'inputValueName':
-                        action_input_descriptions.append({'valueName': value['valueName'], 'value': value['value']})
-
-                    if value['valueName'] == 'actionPropertyName':
-                        setattr(action, value['value'], action_value_list[counter + 1]['value'])
-
-                    if value['valueName'] == 'nextAction':
-                        next_action_state = True
-
-                else:
+                print(value)
+                if next_action_state or output_server_action_state:
                     if value['valueName'] == 'type':
                         next_action.Type = value['value']
                         next_action.Name = value['value']
 
-                    if value['valueName'] == 'inputValueConst' or value['valueName'] == 'inputValueName' or value['valueName'] == 'inputValueNew' or value['valueName'] == 'inputValueName':
+                    if value['valueName'] == 'komplexCode' or value['valueName'] == 'inputValueConst' or value['valueName'] == 'inputValueName' or value['valueName'] == 'inputValueNew' or value['valueName'] == 'inputValueName':
                         next_action_input_descriptions.append({'valueName': value['valueName'], 'value': value['value']})
 
                     if value['valueName'] == 'actionPropertyName':
@@ -113,18 +118,53 @@ class Dea:
                     if value['valueName'] == 'nextAction':
                         self.__setInputValues__(next_action, next_action_input_descriptions, action_configs, data_package_configs)
                         self.__setActionContext__(action)
-                        action.NextActions.append(next_action)
+
+                        if next_action_state:
+                            self.__setInputValues__(next_action, next_action_input_descriptions, action_configs,
+                                                    data_package_configs)
+                            self.__setActionExecute__(next_action, action_configs)
+                            self.__setActionContext__(next_action)
+                            action.NextActions.append(next_action)
+                        elif output_server_action_state:
+                            self.__setInputValues__(next_action, next_action_input_descriptions, action_configs,
+                                                    data_package_configs)
+                            self.__setActionExecute__(next_action, action_configs)
+                            self.__setActionContext__(next_action)
+                            action.OutputServerActoins.append(next_action)
+
                         next_action = ServerAction()
                         next_action_input_descriptions = []
+                else:
+                    if value['valueName'] == 'type':
+                        action.Type = value['value']
+                        action.Name = value['value']
+
+                    if value['valueName'] == 'komplexCode' or value['valueName'] == 'inputValueConst' or value['valueName'] == 'inputValueBinding' or value['valueName'] == 'inputValueNew' or value['valueName'] == 'inputValueName':
+                        action_input_descriptions.append({'valueName': value['valueName'], 'value': value['value']})
+
+                    if value['valueName'] == 'actionPropertyName':
+                        setattr(action, value['value'], action_value_list[counter + 1]['value'])
+
+                    output_server_action_state = value['valueName'] == 'outputServerAction'
+                    next_action_state = (value['valueName'] == 'nextAction')
+
                 counter = counter + 1
 
             if next_action_state:
+                self.__setInputValues__(next_action, next_action_input_descriptions, action_configs, data_package_configs)
+                self.__setActionExecute__(next_action, action_configs)
+                self.__setActionContext__(next_action)
                 action.NextActions.append(next_action)
+            elif output_server_action_state:
+                self.__setInputValues__(next_action, next_action_input_descriptions, action_configs, data_package_configs)
+                self.__setActionExecute__(next_action, action_configs)
+                self.__setActionContext__(next_action)
+                action.OutputServerActions.append(next_action)
             self.__setInputValues__(action, action_input_descriptions, action_configs, data_package_configs)
             self.__setActionExecute__(action, action_configs)
             self.__setActionContext__(action)
-
             actions.append(action)
+
         return actions
 
     def __parseString__(self, string):
@@ -215,7 +255,7 @@ class Dea:
         input_values = []
         counter = 0
         for input_description in action_input_descriptions:
-            if input_description['valueName'] == 'inputValueConst' or input_description['valueName'] == 'inputValueBinding' or input_description['valueName'] == 'inputValueNew':
+            if input_description['valueName'] == 'komplexCode' or input_description['valueName'] == 'inputValueConst' or input_description['valueName'] == 'inputValueBinding' or input_description['valueName'] == 'inputValueNew':
                 name = ''
                 if action_input_descriptions[counter - 1]['valueName'] == 'inputValueName':
                     name = action_input_descriptions[counter - 1]['value']
@@ -244,6 +284,8 @@ class Dea:
                 action.Input[input_value['name']] = input_value['input'].replace('\'', '')
             if input_value['type'] == 'inputValueNew':
                 action.Input[input_value['name']] = self.__getDataPackageByName__(input_value['input'], data_package_configs)
+            if input_value['type'] == 'komplexCode':
+                action.KomplexCode.append({'name': input_value['name'], 'code': input_value['input']})
 
     def __getDataPackageByName__(self, name, data_package_configs):
         data_package = {}
