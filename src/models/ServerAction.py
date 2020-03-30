@@ -69,8 +69,12 @@ class ServerAction:
             condition_value = condition_list[1].remove(' ', '')
             return binding_value == condition_value
         elif self.Condition != '':
-            binding_value = self.getValueByBindingString(self.Condition, data)
-            return binding_value or binding_value == 'True' or binding_value == 'true' or binding_value == 1 or binding_value == '1'
+            if '!' in self.Condition:
+                binding_value = self.getValueByBindingString(self.Condition.replace('!', ''), data)
+                return not binding_value or binding_value == 'False' or binding_value == 'false' or binding_value == 0 or binding_value == '0'
+            else:
+                binding_value = self.getValueByBindingString(self.Condition, data)
+                return binding_value or binding_value == 'True' or binding_value == 'true' or binding_value == 1 or binding_value == '1'
         else:
             return True
 

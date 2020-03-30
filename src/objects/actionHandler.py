@@ -37,47 +37,42 @@ class ActionHandler:
         self.actionOutputData['Global'] = {}
         self.actionOutputData['Global']['Tasks'] = self.__taskService.getCurrentTasksBySessionTotalId(self.session.totalId)
 
-    def executeAction(self, from_client):
-        self.loggingService.log('execute Action ' + str(self.action.Type) + ' | Input: ' + str(self.action.Input))
-        action_config = self.configService.getActionConfigByType(self.action.Type)
+    def executeAction(self, action, from_client):
 
-        if self.action.checkCondition(self.actionOutputData):
-            self.loggingService.logObject(self.action)
-            self.actionOutputData[action_config.outputData] = self.runAction(self.action)
+        if not action.checkCondition(self.actionOutputData):
+            self.loggingService.log('Condition == False: ' + str(action.Type) + ' | Input: ' + str(action.Condition))
+            return
 
-            # config
-            for client_action in action_config.outputClientActions:
-                client_action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-                self.setActionToScreenContext(client_action)
+        self.loggingService.log('execute Action ' + str(action.Type) + ' | Input: ' + str(action.Input))
+        action_config = self.configService.getActionConfigByType(action.Type)
+        self.actionOutputData[action_config.outputData] = self.runAction(action)
 
-            for action_object in action_config.outputServerActions:
-                action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-                self.setActionToScreenContext(action_object)
+        # config
+        for client_action in action_config.outputClientActions:
+            client_action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+            self.setActionToScreenContext(client_action)
 
-            for action_object in action_config.useActions:
-                self.action = action_object
-                self.action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-                self.executeAction(False)
+        for action_object in action_config.outputServerActions:
+            action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+            self.setActionToScreenContext(action_object)
 
-            # action specific
-            for action_object in self.action.OutputServerActions:
-                self.loggingService.logObject(action_object)
-                self.loggingService.logObject(self.action)
-                action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-                self.setActionToScreenContext(action_object)
+        for action_object in action_config.useActions:
+            action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+            self.executeAction(action_object, False)
 
-            for action_object in self.action.NextActions:
-                self.action = action_object
-                self.action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-                self.executeAction(False)
+        # action specific
+        for action_object in action.OutputServerActions:
+            action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+            self.setActionToScreenContext(action_object)
 
-            if from_client:
-                self.serverResult.Actions = self.session.getActionsForResult()
-                self.serverResult.ActionIds = self.session.getCurrentActionIds()
-                self.loggingService.logServerResult(self.serverResult)
-        else:
-            self.loggingService.logObject(self.action)
-            self.loggingService.log('Condition == False: ' + str(self.action.Type) + ' | Input: ' + str(self.action.Condition))
+        for action_object in action.NextActions:
+            action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+            self.executeAction(action_object, False)
+
+        if from_client:
+            self.serverResult.Actions = self.session.getActionsForResult()
+            self.serverResult.ActionIds = self.session.getCurrentActionIds()
+            self.loggingService.logServerResult(self.serverResult)
 
     def setActionToScreenContext(self, action):
         if self.component is not None and action.Context == 'Component':
@@ -123,27 +118,8 @@ class ActionHandler:
         return login_data
 
     def getDataAction(self, data):
-        if 'Next' in data['WhereStatement']:
-            number_of_next_values = 1
-            if len(data['WhereStatement'].split(' ')) > 2:
-                number_of_next_values = data['WhereStatement'].split(' ')[1]
-            current_data_in_client_object = self.component.getDataByName(data['DataType'])
-            if current_data_in_client_object is None:
-                min_id = self.dataService.getMinIdByDataType(data['DataType'])
-                data['WhereStatement'] = 'Id >= ' + str(min_id) + ' AND Id < ' + str(min_id + int(number_of_next_values))
-            else:
-                current_data_in_client_list = [current_data_in_client_object[0]]
-                counter = 0
-                while counter in current_data_in_client_object is not None:
-                    current_data_in_client_list.append(current_data_in_client_object[counter])
-                    counter += 1
-                highest_id = 0
-                for value in current_data_in_client_list:
-                    if value['Id'] > highest_id:
-                        highest_id = value['Id']
-                data['WhereStatement'] = 'Id > ' + str(highest_id) + ' AND Id <= ' + str(highest_id + int(number_of_next_values))
-
-        data_object = self.dataService.getDataPackage(data['DataType'], data['WhereStatement'])
+        where_statement = self.parseWherStatement(data['WhereStatement'], data['DataType'])
+        data_object = self.dataService.getDataPackage(data['DataType'], where_statement)
         self.component.data[data['DataType']] = data_object
         return {'Name': data['DataType'], 'Data': data_object}
 
@@ -172,8 +148,7 @@ class ActionHandler:
         for action in screen_config.outputServerActions:
             self.setActionToScreenContext(action)
         for action_object in screen_config.useActions:
-            self.action = action_object
-            self.executeAction(False)
+            self.executeAction(action_object, False)
 
         return {'ComponentName': component_name, 'DeleteActionIds': []}
 
@@ -191,7 +166,6 @@ class ActionHandler:
             data_value = data_package[value_id]
             for _property in property_path:
                 if len(data_value) > 0:
-                    print(_property, data_value)
                     data_value = data_value[_property]
                     if str(data_value) == str(condition):
                         return_data_package[counter] = data_package[value_id]
@@ -204,4 +178,33 @@ class ActionHandler:
         return {}
 
     def getDataCondition(self, data):
-        return {'WhereStatement': data['WhereStatement'], 'DataType': data['DataType'], 'Result': False}
+        where_statement = self.parseWherStatement(data['WhereStatement'], data['DataType'])
+        data_object = self.dataService.getDataPackage(data['DataType'], where_statement)
+        if data_object is None:
+            return {'WhereStatement': data['WhereStatement'], 'DataType': data['DataType'], 'Result': False}
+        res = 0 in data_object
+        return {'WhereStatement': data['WhereStatement'], 'DataType': data['DataType'], 'Result': res}
+
+    def parseWherStatement(self, where_statement, data_type):
+        new_where_statement = where_statement
+        if 'Next' in new_where_statement:
+            number_of_next_values = 1
+            if len(new_where_statement.split(' ')) > 2:
+                number_of_next_values = new_where_statement.split(' ')[1]
+            current_data_in_client_object = self.component.getDataByName(data_type)
+            if current_data_in_client_object is None:
+                min_id = self.dataService.getMinIdByDataType(data_type)
+                new_where_statement = 'Id >= ' + str(min_id) + ' AND Id < ' + str(min_id + int(number_of_next_values))
+            else:
+                current_data_in_client_list = [current_data_in_client_object[0]]
+                counter = 0
+                while counter in current_data_in_client_object is not None:
+                    current_data_in_client_list.append(current_data_in_client_object[counter])
+                    counter += 1
+                highest_id = 0
+                for value in current_data_in_client_list:
+                    if value['Id'] > highest_id:
+                        highest_id = value['Id']
+                new_where_statement = 'Id > ' + str(highest_id) + ' AND Id <= ' + str(highest_id + int(number_of_next_values))
+        return new_where_statement
+

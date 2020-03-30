@@ -115,12 +115,10 @@ class ConfigService:
 
     def __initActionDescriptions__(self, data):
         for action_description in data:
-            print('##################', action_description)
             action_decription_config = ActionDescriptionConfig()
             action_decription_config.action = self.dea.getActionsByString(action_description['Description'], self.dataPackageConfigs, self.actionConfigs)[0]
             action_decription_config.name = action_description['Name']
             action_decription_config.id = action_description['ID']
-            self.__loggingService.logObject(action_decription_config.action)
             self.actionDescriptionConfigs.append(action_decription_config)
 
     def __initReferenceConfigs__(self, data):

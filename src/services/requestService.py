@@ -31,5 +31,4 @@ class RequestService:
 
 class MyEncoder(JSONEncoder):
     def default(self, o):
-        print(o)
         return o.__dict__

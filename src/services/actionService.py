@@ -47,6 +47,6 @@ class ActionService:
         action.Input = output_action.Input
 
         action_handler = ActionHandler(action, session)
-        action_handler.executeAction(True)
+        action_handler.executeAction(action, True)
         return action_handler.serverResult
 
