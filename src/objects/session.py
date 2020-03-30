@@ -23,7 +23,6 @@ class Session:
         self.lastRequestInSeconds = 0
         self.loginState = ''
         self.websocket = CostumerWebsocket()
-
         self.actions = self.actions + self.__configService__.getAllOpeningActions()
 
     @staticmethod

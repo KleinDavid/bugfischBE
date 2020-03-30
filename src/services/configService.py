@@ -33,8 +33,11 @@ class ConfigService:
         self.screenConfigs = []
         self.referenceConfigs = []
         self.dataPackageConfigs = []
+        self.actionDescriptionConfigs = []
         self.dea = Dea()
+        self.__initConfig__()
 
+    def __initConfig__(self):
         connection = mysql.connector.connect(
             # database="jschelp",
             # user="jschelp",
@@ -52,6 +55,12 @@ class ConfigService:
             cursor.execute("select database();")
             record = cursor.fetchone()
             # self.__loggingService.log("You're connected to database: " + record)
+
+            self.actionConfigs = []
+            self.screenConfigs = []
+            self.referenceConfigs = []
+            self.dataPackageConfigs = []
+            self.actionDescriptionConfigs = []
 
             cursor = config_data_base.cursor(dictionary=True)
             cursor.execute("SELECT * FROM datapackages")

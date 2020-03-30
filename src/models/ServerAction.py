@@ -21,6 +21,7 @@ class ServerAction:
         self.NextActions = []
         self.OutputServerActions = []
         self.Context = ''
+        self.Condition = ''
 
         # {name, binding}
         self.Bindings = []
@@ -61,19 +62,31 @@ class ServerAction:
                 counter += 1
             self.Input[komplex_code_statement['name']] = new_object_list
 
-    def getValueByBinding(self, binding, data):
+    def checkCondition(self, data):
+        if '==' in self.Condition:
+            condition_list = self.Condition.split('==')
+            binding_value = self.getValueByBindingString(condition_list[0].remove(' ', ''), data)
+            condition_value = condition_list[1].remove(' ', '')
+            return binding_value == condition_value
+        elif self.Condition != '':
+            binding_value = self.getValueByBindingString(self.Condition, data)
+            return binding_value or binding_value == 'True' or binding_value == 'true' or binding_value == 1 or binding_value == '1'
+        else:
+            return True
+
+    @staticmethod
+    def getValueByBinding(binding, data):
         value = data
         for key in binding['binding'].split('.'):
             value = value[key]
         return value
 
-    def getValueByBindingString(self, binding, data):
+    @staticmethod
+    def getValueByBindingString(binding, data):
         value = data
         for key in binding.split('.'):
             if key in value:
                 value = value[key]
-            else:
-                print(value[key])
         return value
 
     def setActionId(self, pre_id, actions):

@@ -29,6 +29,7 @@ class LoggingService:
 
     @staticmethod
     def logObject(my_object):
+        print(my_object)
         pprint(vars(my_object))
 
 

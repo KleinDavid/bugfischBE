@@ -1,4 +1,5 @@
 from objects.session import Session
+from services.configService import ConfigService
 from services.dataService import DataService
 from services.loggingService import LoggingService
 from threading import Timer, Thread, Event
@@ -11,6 +12,7 @@ class SessionService:
     _checkSessionsTime = 60/6
     _removeSessionTime = 600
     __instance = None
+    configService = ConfigService.getInstance()
 
     @staticmethod
     def getInstance():

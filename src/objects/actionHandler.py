@@ -37,62 +37,47 @@ class ActionHandler:
         self.actionOutputData['Global'] = {}
         self.actionOutputData['Global']['Tasks'] = self.__taskService.getCurrentTasksBySessionTotalId(self.session.totalId)
 
-    def executeAction2(self, from_client):
-        self.loggingService.log('execute Action ' + str(self.action.Type) + ' | Input: ' + str(self.action.Input))
-        action_config = self.configService.getActionConfigByType(self.action.Type)
-        self.actionOutputData[action_config.outputData] = self.runAction(self.action)
-
-        # config
-        for client_action in action_config.outputClientActions:
-            client_action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-            self.setActionToScreenContext(client_action)
-
-        for action_object in action_config.outputServerActions:
-            action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-            self.setActionToScreenContext(action_object)
-
-        for action_object in action_config.useActions:
-            self.action = action_object
-            self.action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-            self.executeAction2(False)
-
-        # action specific
-        for action_object in self.action.OutputServerActions:
-            action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-            self.setActionToScreenContext(action_object)
-
-        for action_object in self.action.NextActions:
-            self.action = action_object
-            self.action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
-            self.executeAction2(False)
-
-        if from_client:
-            self.serverResult.Actions = self.session.getActionsForResult()
-            self.serverResult.ActionIds = self.session.getCurrentActionIds()
-            self.loggingService.logServerResult(self.serverResult)
-
     def executeAction(self, from_client):
         self.loggingService.log('execute Action ' + str(self.action.Type) + ' | Input: ' + str(self.action.Input))
+        action_config = self.configService.getActionConfigByType(self.action.Type)
 
-        action_description = ServerActionDescription()
-        self.dataService.mapDataBaseResultToObject('serveractions', 'Type', self.action.Type, action_description)
-        action_description.OutputClientActions = action_description.OutputClientActions.replace(' ', '').split(",")
-        self.actionResultData[action_description.OutputData] = self.runAction(self.action)
+        if self.action.checkCondition(self.actionOutputData):
+            self.loggingService.logObject(self.action)
+            self.actionOutputData[action_config.outputData] = self.runAction(self.action)
 
-        for client_action in self.actionParser.getActionsByArray(action_description.OutputClientActions):
-            self.setActionToScreenContext(client_action)
+            # config
+            for client_action in action_config.outputClientActions:
+                client_action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+                self.setActionToScreenContext(client_action)
 
-        for action_object in self.actionParser.getActionsByArray(action_description.OutputServerActions.split(',')):
-            self.setActionToScreenContext(action_object)
+            for action_object in action_config.outputServerActions:
+                action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+                self.setActionToScreenContext(action_object)
 
-        for action_object in self.actionParser.getActionsByArray(action_description.UseActions.split(',')):
-            self.action = action_object
-            self.executeAction(False)
+            for action_object in action_config.useActions:
+                self.action = action_object
+                self.action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+                self.executeAction(False)
 
-        if from_client:
-            self.serverResult.Actions = self.session.getActionsForResult()
-            self.serverResult.ActionIds = self.session.getCurrentActionIds()
-            self.loggingService.logServerResult(self.serverResult)
+            # action specific
+            for action_object in self.action.OutputServerActions:
+                self.loggingService.logObject(action_object)
+                self.loggingService.logObject(self.action)
+                action_object.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+                self.setActionToScreenContext(action_object)
+
+            for action_object in self.action.NextActions:
+                self.action = action_object
+                self.action.setBindings(self.actionOutputData, self.configService.dataPackageConfigs)
+                self.executeAction(False)
+
+            if from_client:
+                self.serverResult.Actions = self.session.getActionsForResult()
+                self.serverResult.ActionIds = self.session.getCurrentActionIds()
+                self.loggingService.logServerResult(self.serverResult)
+        else:
+            self.loggingService.logObject(self.action)
+            self.loggingService.log('Condition == False: ' + str(self.action.Type) + ' | Input: ' + str(self.action.Condition))
 
     def setActionToScreenContext(self, action):
         if self.component is not None and action.Context == 'Component':
@@ -109,7 +94,8 @@ class ActionHandler:
             "InitializeSessionAction": self.initializeSessionAction,
             "LogoutAction": self.logoutAction,
             "FilterDataAction": self.filterDataAction,
-            "StartNewTaskAction": self.startNewTaskAction
+            "StartNewTaskAction": self.startNewTaskAction,
+            "GetDataCondition": self.getDataCondition
         }
         func = switcher.get(action.Type, lambda: "Invalid month")
         return func(action.Input)
@@ -187,7 +173,7 @@ class ActionHandler:
             self.setActionToScreenContext(action)
         for action_object in screen_config.useActions:
             self.action = action_object
-            self.executeAction2(False)
+            self.executeAction(False)
 
         return {'ComponentName': component_name, 'DeleteActionIds': []}
 
@@ -217,4 +203,5 @@ class ActionHandler:
         self.updateGlobalData()
         return {}
 
-
+    def getDataCondition(self, data):
+        return {'WhereStatement': data['WhereStatement'], 'DataType': data['DataType'], 'Result': False}
