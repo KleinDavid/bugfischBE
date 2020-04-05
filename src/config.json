@@ -1,0 +1,27 @@
+{
+    "database1": {
+      "host": "localhost",
+      "database": "jschelp",
+      "user": "jschelp",
+      "password": "HU&43jdJK)82HU&43jdJK)82"
+    },
+    "database_config1": {
+      "host": "localhost",
+      "database": "jschelp",
+      "user": "jschelp",
+      "password": "HU&43jdJK)82HU&43jdJK)82"
+    },
+    "database": {
+      "host": "localhost",
+      "database": "jugend",
+      "user": "root",
+      "password": "HU&43jdJK)82"
+    },
+    "database_config": {
+      "host": "localhost",
+      "database": "jugend.config",
+      "user": "root",
+      "password": "HU&43jdJK)82"
+    },
+    "developmentState": true
+}

@@ -2,7 +2,6 @@ import string
 import random
 
 from objects.component import Component
-from objects.websocket.consumerWebsocket import CostumerWebsocket
 from services.configService import ConfigService
 from services.dataService import DataService
 from services.loggingService import LoggingService
@@ -22,7 +21,6 @@ class Session:
         self.totalTime = 0
         self.lastRequestInSeconds = 0
         self.loginState = ''
-        self.websocket = CostumerWebsocket()
         self.actions = self.actions + self.__configService__.getAllOpeningActions()
 
     @staticmethod

@@ -1,4 +1,3 @@
-from __future__ import annotations
 from models.ServerAction import ServerAction
 from models.ServerResult import ServerResult
 from objects.actionHandler import ActionHandler
@@ -16,7 +15,7 @@ class ActionService:
     __instance = None
 
     @staticmethod
-    def getInstance() -> ActionService:
+    def getInstance():
         if ActionService.__instance is None:
             ActionService()
         return ActionService.__instance
@@ -28,16 +27,13 @@ class ActionService:
             ActionService.__instance = self
 
     def executeAction(self, output_action):
-        if not self.dataService.checkDataBaseConnection():
-            res = ServerResult()
-            res.Error = 'No Data Base Connection'
-            return res
         session = self.sessionService.getSessionByToken(output_action.Token)
         if session is None:
             output_action = ServerAction()
             output_action.Type = 'InitializeSessionAction'
             output_action.Input = {}
             output_action.Input['Token'] = ''
+
             session = self.sessionService.getSessionByToken(self.sessionService.generate_session_and_token())
         action = session.getActionByOutputAction(output_action)
         if action is None:

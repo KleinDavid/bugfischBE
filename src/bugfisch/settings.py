@@ -39,6 +39,11 @@ LOGGING = {
         }
     },
     'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'error_log.log',
+        },
         'mail_admins': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
@@ -47,7 +52,7 @@ LOGGING = {
     },
     'loggers': {
         'django.request': {
-            'handlers': ['mail_admins'],
+            'handlers': ['file'],
             'level': 'ERROR',
             'propagate': True,
         },

@@ -16,13 +16,13 @@ class ActionHandler:
     actionResultData = {}
     loggingService = LoggingService()
     actionParser = {}
-    dataService = DataService.getInstance()
     sessionService = SessionService.getInstance()
     component = {}
     configService = ConfigService.getInstance()
     __taskService = TaskService.getInstance()
 
     def __init__(self, action, session):
+        self.dataService = DataService.getInstance()
         self.actionResultData = {}
         self.actionOutputData = {}
         self.serverResult = ServerResult()
@@ -38,10 +38,12 @@ class ActionHandler:
         self.actionOutputData['Global']['Tasks'] = self.__taskService.getCurrentTasksBySessionTotalId(self.session.totalId)
 
     def executeAction(self, action, from_client):
-
         if not action.checkCondition(self.actionOutputData):
-            self.loggingService.log('Condition == False: ' + str(action.Type) + ' | Input: ' + str(action.Condition))
+            self.loggingService.log('Condition == False: ' + str(action.Type))
             return
+
+        if action.IsDescription:
+            action = self.configService.getActionDescriptionConfigByName(action.Name)
 
         self.loggingService.log('execute Action ' + str(action.Type) + ' | Input: ' + str(action.Input))
         action_config = self.configService.getActionConfigByType(action.Type)
@@ -73,6 +75,7 @@ class ActionHandler:
             self.serverResult.Actions = self.session.getActionsForResult()
             self.serverResult.ActionIds = self.session.getCurrentActionIds()
             self.loggingService.logServerResult(self.serverResult)
+            self.dataService.connection.close()
 
     def setActionToScreenContext(self, action):
         if self.component is not None and action.Context == 'Component':
@@ -90,7 +93,9 @@ class ActionHandler:
             "LogoutAction": self.logoutAction,
             "FilterDataAction": self.filterDataAction,
             "StartNewTaskAction": self.startNewTaskAction,
-            "GetDataCondition": self.getDataCondition
+            "GetDataCondition": self.getDataCondition,
+            "SaveDataCondition": self.saveDataCondition,
+            "SetDataAction": self.setDataAction
         }
         func = switcher.get(action.Type, lambda: "Invalid month")
         return func(action.Input)
@@ -99,13 +104,13 @@ class ActionHandler:
     def initializeSessionAction(self, data):
         token = data['Token']
         if token == '':
-            self.session = self.sessionService.getSessionByToken(self.sessionService.generate_session_and_token())
-            screen = self.dataService.getScreenByStartScreen('Init')
-            return {'Token': self.session.token, 'ComponentName': screen['ComponentName'], 'WebsocketPath': self.session.websocket.path}
+            # self.session = self.sessionService.getSessionByToken(self.sessionService.generate_session_and_token())
+            screen = self.configService.getScreenConfigByStartScreen('Init')
+            return {'Token': self.session.token, 'ComponentName': screen.componentName, 'WebsocketPath': ''}
         else:
             self.session = self.sessionService.getSessionByToken(token)
             self.session.setNoActionInClient()
-            return {'Token': self.session.token, 'ComponentName': self.session.getCurrentComponent().name, 'WebsocketPath': self.session.websocket.path}
+            return {'Token': self.session.token, 'ComponentName': self.session.getCurrentComponent().name, 'WebsocketPath': ''}
 
     def loginAction(self, data):
         password = data['Password']
@@ -185,9 +190,34 @@ class ActionHandler:
         res = 0 in data_object
         return {'WhereStatement': data['WhereStatement'], 'DataType': data['DataType'], 'Result': res}
 
+    def saveDataCondition(self, data):
+        table_name = data['DataType']
+        condition = data['Condition']
+        failed_list_field = data['FailedListField']
+        data = data['Data']
+        failted_list = []
+
+        if_decition = condition.split('?')[0].replace(' ', '')
+        if_statement = condition.split('?')[1].split(':')[0].replace(' ', '')
+        # else_statement = condition.split(':')[1].replace(' ', '')
+        res = True
+
+        if '0' in data:
+            counter = 0
+            while str(counter) in data:
+                if self.getValueByCondition(if_decition, data[str(counter)]):
+                    res = self.getValueByCondition(if_statement, data[str(counter)]) and res
+                    if not self.getValueByCondition(if_statement, data[str(counter)]):
+                        failted_list.append(data[str(counter)][failed_list_field])
+                counter += 1
+        return {'Data': data, 'DataType': table_name, 'Result': res, 'FailtedList': failted_list}
+
+    def setDataAction(self, data):
+        return {'Data': data['Data'], 'Name': data['Name']}
+
     def parseWherStatement(self, where_statement, data_type):
         new_where_statement = where_statement
-        if 'Next' in new_where_statement:
+        if 'Marit' in new_where_statement:
             number_of_next_values = 1
             if len(new_where_statement.split(' ')) > 2:
                 number_of_next_values = new_where_statement.split(' ')[1]
@@ -208,3 +238,27 @@ class ActionHandler:
                 new_where_statement = 'Id > ' + str(highest_id) + ' AND Id <= ' + str(highest_id + int(number_of_next_values))
         return new_where_statement
 
+    def getValueByCondition(self, string, data):
+        if '==' in string:
+            value_list = string.split('==')
+            return self.getLenOfValueByString(value_list[0], data) == value_list[1]
+        if '>' in string:
+            value_list = string.split('>')
+            return self.getLenOfValueByString(value_list[0], data) > int(value_list[1])
+        if '<' in string:
+            value_list = string.split('<')
+            return self.getLenOfValueByString(value_list[0], data) < int(value_list[1])
+        if '<=' in string:
+            value_list = string.split('<=')
+            return self.getLenOfValueByString(value_list[0], data) <= int(value_list[1])
+        if '>=' in string:
+            value_list = string.split('>=')
+            return self.getLenOfValueByString(value_list[0], data) >= int(value_list[1])
+
+    @staticmethod
+    def getLenOfValueByString(string, data):
+        if 'len(' in string:
+            string = string.replace('len(', '').replace(')', '')
+            return len(data[string])
+        else:
+            return data[string]

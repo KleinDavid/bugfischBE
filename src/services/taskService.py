@@ -1,4 +1,3 @@
-from __future__ import annotations
 from objects.task import Task
 from services.dataService import DataService
 
@@ -8,7 +7,7 @@ class TaskService:
     __instance = None
 
     @staticmethod
-    def getInstance() -> TaskService:
+    def getInstance():
         if TaskService.__instance is None:
             TaskService()
         return TaskService.__instance
@@ -21,7 +20,7 @@ class TaskService:
 
         self.currentTasks = []
 
-    def getCurrentTasksBySessionTotalId(self, session_total_id) -> Task:
+    def getCurrentTasksBySessionTotalId(self, session_total_id):
         obj = {}
         for i in list(filter(lambda x: x.sessionTotalId == session_total_id, self.currentTasks)):
             props = {}

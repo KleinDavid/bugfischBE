@@ -8,6 +8,7 @@ from objects.configObjects.dea import Dea
 from objects.configObjects.referenceConfig import ReferenceConfig
 from objects.configObjects.screenConfig import ScreenConfig
 from services.loggingService import LoggingService
+import json
 
 import copy
 
@@ -36,17 +37,20 @@ class ConfigService:
         self.actionDescriptionConfigs = []
         self.dea = Dea()
         self.__initConfig__()
+        self.configJsonData = {}
+        with open('config.json') as json_file:
+            self.configJsonData = json.load(json_file)
 
     def __initConfig__(self):
+        with open('config.json') as json_file:
+            self.configJsonData = json.load(json_file)
+
         connection = mysql.connector.connect(
-            # database="jschelp",
-            # user="jschelp",
-            # passwd="HU&43jdJK)82HU&43jdJK)82",
-            # use_pure=True)
-            host="localhost",
-            database="jugend.config",
-            user="root",
-            passwd="HU&43jdJK)82")
+            host=self.configJsonData["database_config"]["host"],
+            database=self.configJsonData["database_config"]["database"],
+            user=self.configJsonData["database_config"]["user"],
+            passwd=self.configJsonData["database_config"]["password"],
+            use_pure=True)
         if connection.is_connected():
             config_data_base = connection
             db_info = connection.get_server_info()
@@ -142,14 +146,17 @@ class ConfigService:
             data_package_config.properties = data_package_decription['Properties'].replace(' ', '').split(',')
             self.dataPackageConfigs.append(data_package_config)
 
-    def getScreenConfigByComponentName(self, name) -> ScreenConfig:
+    def getScreenConfigByComponentName(self, name) :
         return copy.deepcopy(list(filter(lambda x: x.componentName == name, self.screenConfigs))[0])
 
-    def getScreenConfigByStartScreen(self, start_screen) -> ScreenConfig:
+    def getScreenConfigByStartScreen(self, start_screen):
         return copy.deepcopy(list(filter(lambda x: x.startScreen == start_screen, self.screenConfigs))[0])
 
     def getActionConfigByType(self, _type):
         return copy.deepcopy(list(filter(lambda x: x.type == _type, self.actionConfigs))[0])
+
+    def getActionDescriptionConfigByName(self, name):
+        return copy.deepcopy(list(filter(lambda x: x.name == name, self.actionDescriptionConfigs))[0].action)
 
     def getAllOpeningActions(self):
         action_descriptions = list(filter(lambda x: x.opening == '1', self.actionConfigs))
@@ -167,3 +174,5 @@ class ConfigService:
     def getDatPackageConfigByName(self, name) -> DataPackageConfig:
         return list(filter(lambda x: x.name == name, self.dataPackageConfigs))[0]
 
+    def getDevelopmentState(self):
+        return self.configJsonData["developmentState"]

@@ -14,7 +14,7 @@ class Dea:
         self.transitions = [
             Transition(-1, ' ', -1, ''),
             Transition(-1, '(', 0, 'groupStart'),
-            Transition(-1, '(', -1, 'groupStart'),
+            # Transition(-1, '(', -1, 'groupStart'),
             Transition(-1, 'any*', 0, 'type'),
             Transition(0, 'any*', 0, 'type'),
 
@@ -67,8 +67,11 @@ class Dea:
 
             Transition(14, ';', -1, 'newAction'),
             Transition(9, ';', -1, 'newAction'),
-            Transition(14, ')', -1, 'groupEnd'),
-            Transition(9, ')', -1, 'groupEnd'),
+            #Transition(14, ')', -1, 'groupEnd'),
+            #Transition(9, ')', -1, 'groupEnd'),
+            Transition(14, ' ', -1, ''),
+            Transition(9, ' ', -1, ''),
+
             Transition(14, ')', 14, 'groupEnd'),
             Transition(9, ')', 9, 'groupEnd'),
 
@@ -84,14 +87,33 @@ class Dea:
             Transition(19, ')', 9, ''),
 
             Transition(-1, '{', 20, ''),
+            Transition(0, '{', 20, ''),
             Transition(20, 'any*', 20, 'condition'),
             Transition(20, '} ?', -1, ''),
-        ]
 
+            Transition(-1, '/', 21, ''),
+            Transition(21, 'any*', 21, 'actionDescription'),
+            Transition(21, '/', 9, ''),
+            Transition(21, '/', -1, ''),
+        ]
+        self.parseSting = 'GetDataCondition(DataType=\'SurvayQuestion\', WhereStatement=\'Next 12 Id\', \'lala\'){Name=NextQuestions}->({GetDataConditionObject.Result} ? GetDataAction(DataType=\'SurvayQuestion\', WhereStatement=\'Next 12 Id\'){Name=NextQuestions}=>(SaveDataAction(DataType=\'Answer\', Data=([DataPackage.Data]=>[new Answer(QuestionId=Id, User=Global.Tasks.Survay.id)])){Name=SaveQuestionAction}->/GetQuestion/))->{!GetDataConditionObject.Result} ? ChangeRoute(\'SurveyWellcomeComponent\') '
         self.actionConfigs = ''
         self.dataPackageConfigs = ''
 
+        self.data_package_configs = ''
+        self.action_configs = ''
+        self.parsed = False
+
+    def getActionsByString7(self, actions_string, data_package_configs, action_configs):
+        self.data_package_configs = data_package_configs
+        self.action_configs = action_configs
+        if not self.parsed:
+            self.getActionsByString2(self.parseSting, self.data_package_configs, self.action_configs)
+        self.parsed = True
+        return ServerAction()
+
     def getActionsByString(self, actions_string, data_package_configs, action_configs):
+        # actions_string = self.parseSting
         self.dataPackageConfigs = data_package_configs
         self.actionConfigs = action_configs
 
@@ -125,6 +147,14 @@ class Dea:
             if value['valueName'] == 'type':
                 server_action.Type = value['value']
                 server_action.Name = value['value']
+                print('####', server_action.Type)
+
+            if value['valueName'] == 'actionDescription':
+                server_action.Type = value['value']
+                server_action.Name = value['value']
+                print('####', server_action.Type)
+                server_action.IsDescription = True
+                return server_action
 
             if value['valueName'] == 'komplexCode' or value['valueName'] == 'inputValueConst' or \
                     value['valueName'] == 'inputValueBinding' or value['valueName'] == 'inputValueNew' or \
@@ -143,10 +173,9 @@ class Dea:
         self.__setInputValues__(server_action, action_input_descriptions)
         self.__setActionExecute__(server_action)
         self.__setActionContext__(server_action)
-
         return server_action
 
-    def __getActionByValueList__(self, value_list) -> ServerAction:
+    def __getActionByValueList__(self, value_list):
         group_list = self.__getGroupList__(value_list, 0)
         action = self.__createServerActionByHelpingAction__(self.__getHelpingActionByGroupList__(group_list))
         return action
@@ -234,6 +263,7 @@ class Dea:
         found_values = []
         while counter < len(string):
             transitions = self._getTransitions(current_states, counter, string)
+
             if len(transitions) == 0:
                 self.loggingService.log('parseActionError [' + string + '] at position ' + str(counter) + ' \'' + string[counter] + '\'')
                 return None
@@ -242,10 +272,13 @@ class Dea:
                 delete_values = []
                 is_there_a_transition = False
                 for transition in transitions:
+
                     if transition.firstKnote == current_name_value['state']:
                         if (transition.name != current_name_value['valueName'] or transition.name in self.singleValueNameTransitions) \
                                 and current_name_value['valueName'] != '':
                             found_values.append(current_name_value)
+                            #self.loggingService.logObject(transition)
+                            #print(current_name_value, current_name_values)
                             delete_values.append(current_name_value)
                         is_there_a_transition = True
                 if not is_there_a_transition:
@@ -309,7 +342,6 @@ class Dea:
 
     def __setInputValues__(self, action, action_input_descriptions):
         list_of_expected_inputs = []
-
         # set default inputs in action
         for action_config in self.actionConfigs:
             if action.Type == action_config.type:

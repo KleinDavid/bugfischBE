@@ -9,8 +9,8 @@ class SessionService:
     _sessions = []
     _dataService = DataService.getInstance()
     _logginService = LoggingService()
-    _checkSessionsTime = 60/6
-    _removeSessionTime = 600
+    _checkSessionsTime = 60/1
+    _removeSessionTime = 60000
     __instance = None
     configService = ConfigService.getInstance()
 
@@ -25,10 +25,11 @@ class SessionService:
             raise Exception("This class is a singleton!")
         else:
             SessionService.__instance = self
-        
-        #stop_flag = Event()
-        #timer = Timer(stop_flag, self._checkSessionsTime, self.sessiontimer)
-        #timer.start()
+
+        if not self.configService.getDevelopmentState():
+            stop_flag = Event()
+            timer = Timer(stop_flag, self._checkSessionsTime, self.sessiontimer)
+            timer.start()
 
     def login(self, password):
         if self._dataService.check_passwords(password):
@@ -44,6 +45,7 @@ class SessionService:
         session = Session(highest_id + 1)
         session.totalId = self._dataService.saveNewSession(session)
         self._sessions.append(session)
+        # self.configService.__initConfig__()
         LoggingService.log('new Session: ' + session.token)
         return session.token
 
