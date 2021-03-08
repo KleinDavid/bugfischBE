@@ -19,7 +19,7 @@ class LoggingService:
     def logServerResult(self, server_result):
         string = 'Send ServerResult | Actions = ['
         for server_action in server_result.Actions:
-            action_string = '{\'Type\': \'' + str(server_action.Type) + '\', \'Input\': \'' + str(server_action.Input) + '\'}'
+            action_string = '{\'Type\': \'' + str(server_action.Name) + '\', \'Input\': \'' + str(server_action.Input) + '\'}'
             string = string + action_string
 
         string = string + '] | ClientActions = ['

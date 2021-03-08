@@ -1,0 +1,19 @@
+GetDataCondition(DataType='SurvayQuestion', WhereStatement='next 12 Id', 'lala'){Name=NextQuestions}
+	->(
+	{GetDataConditionObject.Result} ? 
+	GetDataAction(DataType='SurvayQuestion', WhereStatement='next 12 Id'){Name=NextQuestions}
+		=>(SaveDataCondition(DataType='Answer', Data=([DataPackage.Data]=>[new Answer(QuestionId=Id, User=Global.Tasks.Survay.id, Required=Required)]), Condition='Required == 1 ? len(Value) > 0 : true', FailedListField='QuestionId'){Name=SaveQuestionAction}
+			->(
+			{SaveDataConditionObject.Result} ? 
+			SaveDataAction(DataType='Answer', Data=SaveDataConditionObject.Data)
+				->SetDataAction(Name='FailedAnswerSaving', Data='')
+				->/SurvayNext/
+			)
+			->
+			{!SaveDataConditionObject.Result} ? 
+			SetDataAction(Name='FailedAnswerSaving', Data=SaveDataConditionObject.FailtedList)
+		)
+	)
+	->
+	{!GetDataConditionObject.Result} ? 
+	ChangeRoute('SurveyEndComponent')

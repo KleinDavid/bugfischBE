@@ -23,6 +23,7 @@ class ServerAction:
         self.Context = ''
         self.Condition = ''
         self.IsDescription = False
+        self.IsRunning = False
 
         # {name, binding}
         self.Bindings = []
@@ -74,9 +75,7 @@ class ServerAction:
                 binding_value = self.getValueByBindingString(self.Condition.replace('!', ''), data)
                 return not binding_value or binding_value == 'False' or binding_value == 'false' or binding_value == 0 or binding_value == '0'
             else:
-                print(data)
                 binding_value = self.getValueByBindingString(self.Condition, data)
-                print('--------------------', self.Condition, data[self.Condition.split('.')[0]])
                 return binding_value or binding_value == 'True' or binding_value == 'true' or binding_value == 1 or binding_value == '1'
         else:
             return True

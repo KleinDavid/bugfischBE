@@ -36,13 +36,24 @@ class ActionService:
 
             session = self.sessionService.getSessionByToken(self.sessionService.generate_session_and_token())
         action = session.getActionByOutputAction(output_action)
+
         if action is None:
             result = ServerResult()
             result.Error = 'Action Not Available'
             return result
+
+        if action.IsRunning:
+            result = ServerResult()
+            result.Error = 'Action Is Running'
+            return result
+        else:
+            action.IsRunning = True
+
         action.Input = output_action.Input
 
         action_handler = ActionHandler(action, session)
         action_handler.executeAction(action, True)
+        action.IsRunning = False
+
         return action_handler.serverResult
 

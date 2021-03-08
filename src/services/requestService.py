@@ -21,7 +21,7 @@ class RequestService:
     def handleExecuteAction(self, request):
         data = self.get_data_from_request(request)
         server_action = ServerAction
-        server_action.Type = data["Type"]
+        # server_action.Type = data["Type"]
         server_action.Input = data["Input"]
         server_action.Name = data["Name"]
         server_action.Token = data["Token"]

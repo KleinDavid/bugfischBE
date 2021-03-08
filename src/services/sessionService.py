@@ -45,7 +45,7 @@ class SessionService:
         session = Session(highest_id + 1)
         session.totalId = self._dataService.saveNewSession(session)
         self._sessions.append(session)
-        # self.configService.__initConfig__()
+        self.configService.__initConfig__()
         LoggingService.log('new Session: ' + session.token)
         return session.token
 

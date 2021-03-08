@@ -113,6 +113,10 @@ class Dea:
         return ServerAction()
 
     def getActionsByString(self, actions_string, data_package_configs, action_configs):
+        if actions_string is None:
+            return []
+        actions_string = actions_string.replace('\n', '').replace('\r', '').replace('\t', '')
+        print(actions_string)
         # actions_string = self.parseSting
         self.dataPackageConfigs = data_package_configs
         self.actionConfigs = action_configs

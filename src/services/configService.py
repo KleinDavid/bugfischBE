@@ -1,4 +1,3 @@
-from __future__ import annotations
 import mysql.connector
 from models.ServerAction import ServerAction
 from objects.configObjects.actionConfig import ActionConfig
@@ -19,7 +18,7 @@ class ConfigService:
     __loggingService = LoggingService()
 
     @staticmethod
-    def getInstance() -> ConfigService:
+    def getInstance():
         if ConfigService.__instance is None:
             ConfigService()
         return ConfigService.__instance

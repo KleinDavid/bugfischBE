@@ -217,7 +217,7 @@ class ActionHandler:
 
     def parseWherStatement(self, where_statement, data_type):
         new_where_statement = where_statement
-        if 'Marit' in new_where_statement:
+        if 'next' in new_where_statement:
             number_of_next_values = 1
             if len(new_where_statement.split(' ')) > 2:
                 number_of_next_values = new_where_statement.split(' ')[1]

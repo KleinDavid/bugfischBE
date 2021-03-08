@@ -1,6 +1,7 @@
 import string
 import random
 
+from models.OutputAction import OutputAction
 from objects.component import Component
 from services.configService import ConfigService
 from services.dataService import DataService
@@ -35,14 +36,16 @@ class Session:
 
     def getActionByOutputAction(self, output_action):
         for current_action in self.actions:
-            if current_action.Type == output_action.Type and current_action.Id == output_action.Id:
+            if current_action.Id == output_action.Id:
                 current_action.InClient = False
                 return current_action
         if '_' in output_action.Id:
-            for current_action in self.getComponentById(output_action.Id.split('_')[0]).actions:
-                if current_action.Id == output_action.Id and current_action.Type == output_action.Type:
-                    current_action.InClient = False
-                    return current_action
+            component = self.getComponentById(output_action.Id.split('_')[0])
+            if component.active:
+                for current_action in component.actions:
+                    if current_action.Id == output_action.Id:
+                        current_action.InClient = False
+                        return current_action
         return None
 
     def createNewComponent(self, name):
@@ -79,7 +82,18 @@ class Session:
         for action in component_actions:
             action.InClient = True
         self.lastRequestInSeconds = 0
-        return result_actions
+
+        def mapToOutputAction(a):
+            output_action = OutputAction()
+            output_action.Input = a.Input
+            output_action.Token = ''
+            output_action.Name = a.Name
+            output_action.Id = a.Id
+            # output_action.Type = a.Type
+            output_action.Execute = a.Execute
+            return output_action
+
+        return list(map(mapToOutputAction, result_actions))
 
     def getCurrentActionIds(self):
         action_ids = []

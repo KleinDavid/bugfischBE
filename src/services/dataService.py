@@ -6,6 +6,7 @@ from services.loggingService import LoggingService
 import json
 import time
 from random import randrange
+import sys
 
 
 class DataService(object):
@@ -31,24 +32,30 @@ class DataService(object):
         with open('config.json') as json_file:
             self.configJsonData = json.load(json_file)
 
-        self.connection = None
+        self.connection = mysql.connector
         self.__connection = None
         self.connectWithInfo()
 
     def connectWithInfo(self):
-        self.connect()
+        self.connection = mysql.connector.connect(
+            host=self.configJsonData["database"]["host"],
+            database=self.configJsonData["database"]["database"],
+            user=self.configJsonData["database"]["user"],
+            passwd=self.configJsonData["database"]["password"],
+            use_pure=True)
         try:
             if self.connection.is_connected():
                 db_info = self.connection.get_server_info()
-                print("Connected to MySQL Server version ", db_info)
+                # print("Connected to MySQL Server version ", db_info)
                 cursor = self.connection.cursor()
                 cursor.execute("select database();")
                 record = cursor.fetchone()
-                print("You're connected to database: ", record)
+                # print("You're connected to database: ", record)
         except Error as e:
             print("Error while connecting to MySQL: ", e)
 
     def connect(self):
+        self.connection.close()
         self.connection = mysql.connector.connect(
             host=self.configJsonData["database"]["host"],
             database=self.configJsonData["database"]["database"],
@@ -204,51 +211,51 @@ class DataService(object):
         return str(int(max_id) + 1)
 
     def runQueryWithSingleResult(self, query):
-        if not self.runningInsert:
-            self.runningInsert = True
+        try:
             res = self.getCurser(query).fetchall()[0]
-            self.runningInsert = False
-            return res
-        else:
-            sleep_time = randrange(100) / 10
-            time.sleep(sleep_time)
+        except Error as e:
             return self.runQueryWithSingleResult(query)
+        return res
 
     def runQueryWithMultiResult(self, query):
-        if not self.runningInsert:
-            self.runningInsert = True
+        try:
             res = self.getCurser(query).fetchall()
-            self.runningInsert = False
-            return res
-        else:
-            sleep_time = randrange(100) / 10
-            time.sleep(sleep_time)
+        except Error as e:
             return self.runQueryWithMultiResult(query)
+        return res
 
     def runQueryWithoutResult(self, query):
+        self.getCurser(query)
+        self.connection.commit()
+
+    def getCurser(self, query, recursion=1):
+        sys.setrecursionlimit(10001)
+        if recursion > 10000:
+            recursion = randrange(10)
         if not self.runningInsert:
             self.runningInsert = True
-            self.getCurser(query)
-            self.connection.commit()
-            self.runningInsert = False
-        else:
-            sleep_time = randrange(100) / 10
-            time.sleep(sleep_time)
-            self.runQueryWithoutResult(query)
-
-    def getCurser(self, query):
-        try:
-            if self.connection.is_connected():
-                cursor = self.connection.cursor(dictionary=True)
-                cursor.execute(query)
-            else:
-                sleep_time = randrange(100) / 10
+            try:
+                if self.connection.is_connected():
+                    cursor = self.connection.cursor(dictionary=True)
+                    cursor.execute(query)
+                    print(recursion)
+                else:
+                    sleep_time = randrange(100) / (100000 / recursion)
+                    time.sleep(sleep_time)
+                    self.connect()
+                    self.runningInsert = False
+                    return self.getCurser(query, recursion + 1)
+            except Error as e:
+                sleep_time = randrange(100) / (100000 / recursion)
                 time.sleep(sleep_time)
                 self.connect()
-                return self.getCurser(query)
-        except Error as e:
-            sleep_time = randrange(100) / 10
+                self.runningInsert = False
+                return self.getCurser(query, recursion + 1)
+            finally:
+                self.runningInsert = False
+        else:
+            sleep_time = randrange(100) / (100000 / recursion)
             time.sleep(sleep_time)
-            self.connect()
-            return self.getCurser(query)
+            return self.getCurser(query, recursion + 1)
+        self.runningInsert = False
         return cursor

@@ -5,3 +5,5 @@ class OutputAction:
         self.Input = {}
         self.Id = ''
         self.Token = ''
+        # self.Type = ''
+        self.Execute = ''
