@@ -1,3 +1,6 @@
+automium_web
+objects
+services
 channels
 websockets
 mysql

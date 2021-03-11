@@ -16,7 +16,7 @@ class RequestService:
 
     @staticmethod
     def get_data_from_request(request):
-        return json.loads(request.body.decode('utf-8'))['data']
+        return json.loads(request)['data']
 
     def handleExecuteAction(self, request):
         data = self.get_data_from_request(request)
@@ -26,7 +26,9 @@ class RequestService:
         server_action.Name = data["Name"]
         server_action.Token = data["Token"]
         server_action.Id = data["Id"]
-        return Response(json.loads(MyEncoder().encode(self.actionService.executeAction(server_action))))
+        result = self.actionService.executeAction(server_action)
+        result.ExecutedActionId = server_action.Id
+        return MyEncoder().encode(result)
 
 
 class MyEncoder(JSONEncoder):
