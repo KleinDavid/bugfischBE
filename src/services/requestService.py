@@ -28,6 +28,7 @@ class RequestService:
         server_action.Id = data["Id"]
         result = self.actionService.executeAction(server_action)
         result.ExecutedActionId = server_action.Id
+        result.ExecutedActionName = server_action.Name
         return MyEncoder().encode(result)
 
 

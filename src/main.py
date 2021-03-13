@@ -2,14 +2,13 @@ import asyncio
 import websockets
 from services.requestService import RequestService
 
+
 requestService = RequestService()
 
 
 async def response(websocket, path):
     message = await websocket.recv()
-    print(f'have message {message}')
     req = requestService.handleExecuteAction(message)
-    print('kkkk    '+req)
     await websocket.send(req)
 
 

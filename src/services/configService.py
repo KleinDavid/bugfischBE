@@ -7,6 +7,8 @@ from objects.configObjects.dea import Dea
 from objects.configObjects.referenceConfig import ReferenceConfig
 from objects.configObjects.screenConfig import ScreenConfig
 from services.loggingService import LoggingService
+from objects.configObjects.nfa import Nfa
+import re
 import json
 
 import copy
@@ -90,6 +92,8 @@ class ConfigService:
             result = cursor.fetchall()
             self.__initReferenceConfigs__(result)
 
+            Nfa()
+
     def __initActionConfigs__(self, data):
         for action_decription in data:
             action_config = ActionConfig()
@@ -126,7 +130,6 @@ class ConfigService:
 
     def __initReferenceConfigs__(self, data):
         for reference_decription in data:
-
             reference = ReferenceConfig()
             reference.ID = reference_decription['ID']
             reference.Type = reference_decription['Type']
