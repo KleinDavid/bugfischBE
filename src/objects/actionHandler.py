@@ -89,6 +89,7 @@ class ActionHandler:
             "RouteAfterLogin": self.routeAfterLoginAction,
             "SaveDataAction": self.saveDataAction,
             "GetDataAction": self.getDataAction,
+            "GetDataSingleAction": self.getDataSingleAction,
             "InitializeSessionAction": self.initializeSessionAction,
             "LogoutAction": self.logoutAction,
             "FilterDataAction": self.filterDataAction,
@@ -125,6 +126,15 @@ class ActionHandler:
     def getDataAction(self, data):
         where_statement = self.parseWherStatement(data['WhereStatement'], data['DataType'])
         data_object = self.dataService.getDataPackage(data['DataType'], where_statement)
+        self.component.data[data['DataType']] = data_object
+        return {'Name': data['DataType'], 'Data': data_object}
+
+    def getDataSingleAction(self, data):
+        where_statement = self.parseWherStatement(data['WhereStatement'], data['DataType'])
+        data_object = self.dataService.getDataPackage(data['DataType'], where_statement)
+        if len(data_object) > 0:
+            data_object = data_object[0]
+
         self.component.data[data['DataType']] = data_object
         return {'Name': data['DataType'], 'Data': data_object}
 

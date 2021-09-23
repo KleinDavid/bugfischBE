@@ -1,0 +1,6 @@
+test1(input1='input1value', input2=input2.binding)
+    ->test2(input1='input1value', input2=input2.binding)
+    =>(
+    test3()
+        ->test4()
+    ))
